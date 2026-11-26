@@ -14,10 +14,27 @@ Write-Host "==> Bật Supabase cục bộ" -ForegroundColor Green
 npx --yes supabase@2.122.1 start
 if ($LASTEXITCODE -ne 0) { Fail "Không khởi động được Supabase cục bộ." }
 
-if (-not (Test-Path .next\BUILD_ID)) {
-  Write-Host "==> Đóng gói ứng dụng (chỉ lần đầu, khoảng 1-2 phút)" -ForegroundColor Green
+# Tự nhận biết bản mới: phụ thuộc thay đổi → cài lại; mã nguồn thay đổi → build lại.
+$depsNow = node scripts/fingerprint.mjs --deps
+$depsOld = if (Test-Path node_modules\.hana-deps) { Get-Content node_modules\.hana-deps -Raw } else { "" }
+if (-not (Test-Path node_modules) -or $depsNow -ne "$depsOld".Trim()) {
+  Write-Host "==> Có thay đổi thư viện — cài lại phụ thuộc" -ForegroundColor Green
+  npm ci
+  if ($LASTEXITCODE -ne 0) { Fail "Cài phụ thuộc lỗi (xem thông báo phía trên)." }
+  Set-Content -Path node_modules\.hana-deps -Value $depsNow -NoNewline
+}
+
+Write-Host "==> Cập nhật cấu trúc dữ liệu (chỉ áp dụng phần mới, không xóa dữ liệu)" -ForegroundColor Green
+node scripts/migrate.mjs
+if ($LASTEXITCODE -ne 0) { Fail "Cập nhật cơ sở dữ liệu lỗi (xem thông báo phía trên)." }
+
+$srcNow = node scripts/fingerprint.mjs
+$srcOld = if (Test-Path .next\.hana-source) { Get-Content .next\.hana-source -Raw } else { "" }
+if (-not (Test-Path .next\BUILD_ID) -or $srcNow -ne "$srcOld".Trim()) {
+  Write-Host "==> Đóng gói phiên bản mới (khoảng 1-2 phút)" -ForegroundColor Green
   npm run build
   if ($LASTEXITCODE -ne 0) { Fail "Build lỗi (xem thông báo phía trên)." }
+  Set-Content -Path .next\.hana-source -Value $srcNow -NoNewline
 }
 
 Write-Host "==> Mở http://localhost:3000 — giữ cửa sổ này mở trong lúc dùng ứng dụng" -ForegroundColor Cyan

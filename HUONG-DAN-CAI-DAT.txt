@@ -17,6 +17,13 @@ BƯỚC 2 – Mở ứng dụng (mỗi lần dùng)
   Trình duyệt tự mở http://localhost:3000
   Giữ cửa sổ đen mở trong lúc dùng; đóng cửa sổ = tắt ứng dụng.
 
+CẬP NHẬT PHIÊN BẢN MỚI (dữ liệu đã nhập được giữ nguyên)
+  - Nếu tải bằng file zip: giải nén file zip mới ĐÈ vào thư mục cũ (chọn "Thay thế tất cả"),
+    rồi nhấp đúp 2-MO-UNG-DUNG.bat.
+  - Nếu tải bằng Git: nhấp đúp 3-CAP-NHAT.bat, rồi 2-MO-UNG-DUNG.bat.
+  Khi mở, ứng dụng tự nhận biết bản mới: cài thư viện mới (nếu có), cập nhật cấu trúc
+  dữ liệu (không xóa dữ liệu), đóng gói lại. Lần mở đầu tiên sau cập nhật mất thêm 1–2 phút.
+
 TÀI KHOẢN THỬ (mật khẩu chung: MatKhau@123)
   leader@hanamedia.local   – Leader: tạo/phân công video, duyệt, đăng
   hieu@hanamedia.local     – Content
