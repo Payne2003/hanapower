@@ -10,19 +10,19 @@ Unicode True
   !error "Cần /DSTAGE=<thư mục mã nguồn đã chuẩn bị>"
 !endif
 !ifndef VERSION
-  !define VERSION "0.3.0"
+  !define VERSION "0.3.1"
 !endif
 
-Name "HANA MEDIA"
+Name "HANA Studio"
 OutFile "${OUTFILE}"
 InstallDir "C:\HanaMedia"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
-BrandingText "HANA MEDIA – Quản lý sản xuất video"
+BrandingText "HANA Studio · HANA MEDIA"
 
 VIProductVersion "${VERSION}.0"
-VIAddVersionKey "ProductName" "HANA MEDIA"
-VIAddVersionKey "FileDescription" "Bộ cài HANA MEDIA – Quản lý sản xuất video"
+VIAddVersionKey "ProductName" "HANA Studio"
+VIAddVersionKey "FileDescription" "Bộ cài HANA Studio – Quản lý sản xuất video"
 VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "CompanyName" "HANA MEDIA"
@@ -30,8 +30,8 @@ VIAddVersionKey "LegalCopyright" "HANA MEDIA"
 
 !define MUI_ICON "${STAGE}\public\icons\app.ico"
 !define MUI_UNICON "${STAGE}\public\icons\app.ico"
-!define MUI_WELCOMEPAGE_TITLE "Cài đặt HANA MEDIA"
-!define MUI_WELCOMEPAGE_TEXT "Bộ cài sẽ tự động chuẩn bị mọi thứ để chạy ứng dụng trên máy này:$\r$\n$\r$\n• Node.js, WSL và Docker Desktop (nếu máy chưa có)$\r$\n• Máy chủ dữ liệu, cơ sở dữ liệu và dữ liệu mẫu$\r$\n• Biểu tượng HANA MEDIA trên màn hình$\r$\n$\r$\nCần kết nối Internet. Lần đầu có thể mất 20–40 phút và Windows có thể yêu cầu khởi động lại một lần — sau khi đăng nhập lại, cài đặt tự chạy tiếp."
+!define MUI_WELCOMEPAGE_TITLE "Cài đặt HANA Studio"
+!define MUI_WELCOMEPAGE_TEXT "Bộ cài sẽ tự động chuẩn bị mọi thứ để chạy ứng dụng trên máy này:$\r$\n$\r$\n• Node.js, WSL và Docker Desktop (nếu máy chưa có)$\r$\n• Máy chủ dữ liệu, cơ sở dữ liệu và dữ liệu mẫu$\r$\n• Biểu tượng HANA Studio trên màn hình$\r$\n$\r$\nCần kết nối Internet. Lần đầu có thể mất 20–40 phút và Windows có thể yêu cầu khởi động lại một lần — sau khi đăng nhập lại, cài đặt tự chạy tiếp."
 !define MUI_FINISHPAGE_TITLE "Đã chép xong ứng dụng"
 !define MUI_FINISHPAGE_TEXT "Một cửa sổ cài đặt sẽ mở ra và TỰ ĐỘNG chạy các bước còn lại. Hãy để cửa sổ đó chạy đến khi báo 'CÀI ĐẶT XONG'. Chọn 'Yes' nếu Windows hỏi quyền quản trị."
 
@@ -49,7 +49,7 @@ Section "HANA MEDIA" SecMain
   SetOutPath "$INSTDIR"
   File /r "${STAGE}\*.*"
   WriteUninstaller "$INSTDIR\Go-cai-dat.exe"
-  WriteRegStr HKCU "${UNINST_KEY}" "DisplayName" "HANA MEDIA – Quản lý sản xuất video"
+  WriteRegStr HKCU "${UNINST_KEY}" "DisplayName" "HANA Studio – Quản lý sản xuất video"
   WriteRegStr HKCU "${UNINST_KEY}" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "${UNINST_KEY}" "Publisher" "HANA MEDIA"
   WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\public\icons\app.ico"
@@ -71,6 +71,8 @@ Section "Uninstall"
   ; Tắt máy chủ dữ liệu (dữ liệu vẫn được Docker giữ lại cho lần cài sau)
   nsExec::Exec 'cmd /c cd /d "$INSTDIR" && npx --yes supabase@2.122.1 stop'
   Delete "$DESKTOP\HANA MEDIA.lnk"
+  Delete "$DESKTOP\HANA Studio.lnk"
+  Delete "$SMPROGRAMS\HANA Studio.lnk"
   Delete "$SMPROGRAMS\HANA MEDIA.lnk"
   DeleteRegKey HKCU "${UNINST_KEY}"
   RMDir /r "$INSTDIR"
