@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Clapperboard, FileText, Bell, MessagesSquare, Users, Settings, Menu, X, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/ui/page-header";
 
 const ICONS = {
   dashboard: LayoutDashboard,
@@ -29,11 +30,28 @@ export function AppNav({ items, orgName, userName, roleLabel, logoutAction }: {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
+  const Brand = (
+    <Link href="/" className="flex items-center gap-2.5 rounded-lg px-1.5 py-1">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/icons/icon.svg" alt="" width={34} height={34} className="size-[34px] shrink-0" />
+      <div className="min-w-0 leading-tight">
+        <p className="text-[15px] font-semibold tracking-tight">HANA Studio</p>
+        <p className="truncate text-xs text-muted-foreground" title={orgName}>{orgName}</p>
+      </div>
+    </Link>
+  );
+
   const nav = (
-    <nav aria-label="Điều hướng chính" className="flex flex-1 flex-col gap-1">
+    <nav aria-label="Điều hướng chính" className="flex flex-1 flex-col gap-0.5">
       {items.map((it) => {
         const Icon = ICONS[it.icon];
         const active = isActive(it.href);
@@ -43,14 +61,15 @@ export function AppNav({ items, orgName, userName, roleLabel, logoutAction }: {
             href={it.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              active ? "bg-primary-soft text-primary" : "text-neutral-700 hover:bg-muted",
+              "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              active ? "bg-primary-soft text-primary" : "text-foreground/75 hover:bg-muted hover:text-foreground",
             )}
           >
-            <Icon className="size-4" aria-hidden />
+            {active ? <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary" aria-hidden /> : null}
+            <Icon className={cn("size-[18px]", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} aria-hidden />
             <span className="flex-1">{it.label}</span>
             {it.badge ? (
-              <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground" aria-label={`${it.badge} mục cần xử lý`}>
+              <span className="min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-center text-[11px] leading-none text-primary-foreground" aria-label={`${it.badge} mục chưa đọc`}>
                 {it.badge}
               </span>
             ) : null}
@@ -61,12 +80,15 @@ export function AppNav({ items, orgName, userName, roleLabel, logoutAction }: {
   );
 
   const footer = (
-    <div className="border-t pt-3">
-      <p className="truncate text-sm font-medium">{userName}</p>
-      <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
-      <form action={logoutAction} className="mt-2">
-        <button type="submit" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <LogOut className="size-4" aria-hidden /> Đăng xuất
+    <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
+      <Avatar name={userName} className="size-9 text-xs" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{userName}</p>
+        <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
+      </div>
+      <form action={logoutAction}>
+        <button type="submit" title="Đăng xuất" aria-label="Đăng xuất" className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+          <LogOut className="size-4" aria-hidden />
         </button>
       </form>
     </div>
@@ -74,39 +96,48 @@ export function AppNav({ items, orgName, userName, roleLabel, logoutAction }: {
 
   return (
     <>
-      {/* Thanh trên cùng cho điện thoại */}
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card px-4 md:hidden">
+      {/* Thanh trên cùng: điện thoại, máy tính bảng, cửa sổ hẹp */}
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-card/90 px-3 backdrop-blur lg:hidden">
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpen(true)}
           aria-expanded={open}
           aria-controls="mobile-nav"
-          aria-label={open ? "Đóng menu" : "Mở menu"}
-          className="rounded-md p-1.5 hover:bg-muted"
+          aria-label="Mở menu"
+          className="grid size-10 place-items-center rounded-lg hover:bg-muted"
         >
-          {open ? <X className="size-5" /> : <Menu className="size-5" />}
+          <Menu className="size-5" />
         </button>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/icon.svg" alt="" width={28} height={28} className="size-7" />
-        <span className="truncate font-semibold">HANA Studio</span>
+        {Brand}
       </header>
-      {open ? (
-        <div id="mobile-nav" className="fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col gap-3 overflow-y-auto bg-card p-4 md:hidden">
-          {nav}
+
+      {/* Ngăn kéo menu */}
+      <div className={cn("fixed inset-0 z-40 lg:hidden", open ? "pointer-events-auto" : "pointer-events-none")} aria-hidden={!open}>
+        <div className={cn("absolute inset-0 bg-black/30 transition-opacity", open ? "opacity-100" : "opacity-0")} onClick={() => setOpen(false)} />
+        <div
+          id="mobile-nav"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
+          className={cn(
+            "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-4 bg-sidebar p-4 shadow-xl transition-transform duration-200",
+            open ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <div className="flex items-center justify-between">
+            {Brand}
+            <button type="button" onClick={() => setOpen(false)} aria-label="Đóng menu" className="grid size-9 place-items-center rounded-lg hover:bg-muted">
+              <X className="size-5" />
+            </button>
+          </div>
+          {open ? nav : null}
           {footer}
         </div>
-      ) : null}
+      </div>
 
-      {/* Sidebar cho máy tính */}
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-4 border-r bg-card p-4 md:flex">
-        <div className="flex items-center gap-2 px-1">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/icon.svg" alt="" width={32} height={32} className="size-8 shrink-0" />
-          <div className="min-w-0 leading-tight">
-            <p className="text-sm font-semibold">HANA Studio</p>
-            <p className="truncate text-xs text-muted-foreground" title={orgName}>{orgName}</p>
-          </div>
-        </div>
+      {/* Thanh bên: màn hình rộng */}
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-5 border-r bg-sidebar px-3 py-4 lg:flex">
+        {Brand}
         {nav}
         {footer}
       </aside>

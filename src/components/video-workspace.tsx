@@ -1,7 +1,10 @@
 "use client";
 import { useActionState, useState } from "react";
 import { videoAction } from "@/app/(app)/video/actions";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Check, Lock } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { VideoStage } from "@/lib/types";
 import { Field, Input, Label, Select, Textarea } from "@/components/ui/form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -34,32 +37,22 @@ export function VideoWorkspace({ video: v, perms, contents, editors, channels, t
 
   return (
     <div className="flex flex-col gap-4">
-      <div aria-live="polite" className="empty:hidden">
+      <div aria-live="polite" className="sticky top-16 z-10 empty:hidden lg:top-4">
         {state && !state.ok ? <Alert tone="error">{state.error}</Alert> : null}
         {state && state.ok && state.message ? <Alert tone="success">{state.message}</Alert> : null}
       </div>
 
       {/* ---------------- Bước Content ---------------- */}
-      <Card data-testid="panel-content">
-        <CardHeader>
-          <CardTitle>1. Chuẩn bị Content</CardTitle>
-          <CardDescription>4 hạng mục + link tài nguyên. Bàn giao khi cả 4 hạng mục Hoàn thành.</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <StepCard testId="panel-content" n={1} title="Chuẩn bị Content" description="4 hạng mục + link tài nguyên. Bàn giao khi cả 4 hạng mục Hoàn thành."
+        state={stepState(v.stage, ["idea", "preparing"], "preparing")}>
           {v.handover_status === "needs_more" && (v.stage === "preparing" || v.stage === "idea") ? (
             <Alert tone="warning" className="mb-3">Editor yêu cầu bổ sung: {v.editor_note}</Alert>
           ) : null}
           {canContent ? (
             <form action={action} className="flex flex-col gap-3">
               <Hidden />
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {ITEM_KINDS.map((k) => (
-                  <Field key={k} label={ITEM_KIND_LABEL[k]} htmlFor={`it-${k}`}>
-                    <Select id={`it-${k}`} name={k} defaultValue={v.items[k]}>
-                      {(["todo", "doing", "done"] as const).map((s) => <option key={s} value={s}>{ITEM_STATUS[s].label}</option>)}
-                    </Select>
-                  </Field>
-                ))}
+              <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+                {ITEM_KINDS.map((k) => <ItemPicker key={k} kind={k} label={ITEM_KIND_LABEL[k]} value={v.items[k]} />)}
               </div>
               <Field label="Link tài nguyên (Google Drive…)" htmlFor="res-url">
                 <Input id="res-url" name="resource_url" type="url" defaultValue={v.resource_url ?? ""} placeholder="https://drive.google.com/…" />
@@ -68,9 +61,9 @@ export function VideoWorkspace({ video: v, perms, contents, editors, channels, t
                 <Textarea id="c-note" name="content_note" rows={2} defaultValue={v.content_note ?? ""} />
               </Field>
               {blockers.length ? (
-                <p className="text-xs text-muted-foreground">Để bàn giao: {blockers.join(" · ")}</p>
+                <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Để bàn giao: {blockers.join(" · ")}</p>
               ) : null}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <SubmitButton name="op" value="save_content" variant="outline" pendingText="Đang lưu…">Lưu</SubmitButton>
                 <SubmitButton name="op" value="handover" pendingText="Đang bàn giao…">Lưu & bàn giao cho Editor</SubmitButton>
               </div>
@@ -79,7 +72,7 @@ export function VideoWorkspace({ video: v, perms, contents, editors, channels, t
             <div className="flex flex-col gap-2 text-sm">
               <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {ITEM_KINDS.map((k) => (
-                  <div key={k} className="rounded-md bg-muted px-2 py-1.5">
+                  <div key={k} className="rounded-lg bg-muted px-3 py-2">
                     <dt className="text-xs text-muted-foreground">{ITEM_KIND_LABEL[k]}</dt>
                     <dd className="font-medium">{ITEM_STATUS[v.items[k]].label}</dd>
                   </div>
@@ -89,16 +82,12 @@ export function VideoWorkspace({ video: v, perms, contents, editors, channels, t
               {v.content_note ? <p>Ghi chú Content: {v.content_note}</p> : null}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </StepCard>
 
       {/* ---------------- Bàn giao ---------------- */}
-      <Card data-testid="panel-handover">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">2. Bàn giao cho Editor <HandoverBadge status={v.handover_status} /></CardTitle>
-          <CardDescription>Editor kiểm tra tài nguyên, xác nhận đã nhận đủ hoặc yêu cầu bổ sung.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 text-sm">
+      <StepCard testId="panel-handover" n={2} title="Bàn giao cho Editor" description="Editor kiểm tra tài nguyên, xác nhận đã nhận đủ hoặc yêu cầu bổ sung."
+        state={stepState(v.stage, ["handover"], "handover")} badge={v.handover_status ? <HandoverBadge status={v.handover_status} /> : undefined}>
+        <div className="flex flex-col gap-2 text-sm">
           {v.editor_note && v.handover_status !== "needs_more" ? <p>Ghi chú Edit: {v.editor_note}</p> : null}
           {v.supplement_count > 0 ? <p className="text-xs text-muted-foreground">Đã yêu cầu bổ sung {v.supplement_count} lần.</p> : null}
           {canConfirm ? (
@@ -106,16 +95,13 @@ export function VideoWorkspace({ video: v, perms, contents, editors, channels, t
           ) : v.stage === "handover" ? (
             <p className="text-muted-foreground">Đang chờ Editor xác nhận.</p>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
       {/* ---------------- Dựng ---------------- */}
-      <Card data-testid="panel-edit">
-        <CardHeader>
-          <CardTitle>3. Dựng video</CardTitle>
-          <CardDescription>Editor cập nhật tiến độ, gắn link bản dựng và nộp duyệt.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 text-sm">
+      <StepCard testId="panel-edit" n={3} title="Dựng video" description="Editor cập nhật tiến độ, gắn link bản dựng và nộp duyệt."
+        state={stepState(v.stage, ["editing"], "editing")}>
+        <div className="flex flex-col gap-3 text-sm">
           {v.review_note && v.stage === "editing" && v.revision_count > 0 ? (
             <Alert tone="warning">Leader yêu cầu sửa (lần {v.revision_count}): {v.review_note}</Alert>
           ) : null}
@@ -143,16 +129,13 @@ export function VideoWorkspace({ video: v, perms, contents, editors, channels, t
           ) : v.draft_url ? (
             <p>Link bản dựng: <a className="break-all text-primary underline" href={v.draft_url} target="_blank" rel="noreferrer">{v.draft_url}</a></p>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
       {/* ---------------- Duyệt & đăng ---------------- */}
-      <Card data-testid="panel-review">
-        <CardHeader>
-          <CardTitle>4. Duyệt & đăng kênh</CardTitle>
-          <CardDescription>Leader duyệt bản dựng hoặc yêu cầu sửa; sau khi duyệt, ghi nhận link video đã đăng.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 text-sm">
+      <StepCard testId="panel-review" n={4} title="Duyệt & đăng kênh" description="Leader duyệt bản dựng hoặc yêu cầu sửa; sau khi duyệt, ghi nhận link video đã đăng."
+        state={stepState(v.stage, ["review", "ready"], "ready")}>
+        <div className="flex flex-col gap-3 text-sm">
           {v.revision_count > 0 ? <p className="text-xs text-muted-foreground">Số lần yêu cầu sửa: {v.revision_count}</p> : null}
           {canReview ? <ReviewForm action={action} videoId={v.id} /> : v.stage === "review" ? <p className="text-muted-foreground">Đang chờ Leader duyệt.</p> : null}
           {canPub ? (
@@ -176,8 +159,8 @@ export function VideoWorkspace({ video: v, perms, contents, editors, channels, t
           {v.stage === "published" && v.published_url ? (
             <p>Đã đăng ngày {v.published_at?.split("-").reverse().join("/")}: <a className="break-all text-primary underline" href={v.published_url} target="_blank" rel="noreferrer">{v.published_url}</a></p>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </StepCard>
 
       {/* ---------------- Quản lý ---------------- */}
       {(perms.isManager || perms.isOwner) && v.stage !== "published" && v.stage !== "cancelled" ? (
@@ -206,6 +189,73 @@ export function VideoWorkspace({ video: v, perms, contents, editors, channels, t
         </Card>
       ) : null}
     </div>
+  );
+}
+
+
+const ORDER: VideoStage[] = ["idea", "preparing", "handover", "editing", "review", "ready", "published"];
+type StepState = "done" | "current" | "todo";
+function stepState(stage: VideoStage, from: VideoStage[], doneAfter: VideoStage): StepState {
+  if (stage === "on_hold" || stage === "cancelled") return "todo";
+  if (from.includes(stage)) return "current";
+  return ORDER.indexOf(stage) > ORDER.indexOf(doneAfter) ? "done" : "todo";
+}
+
+function StepCard({ n, title, description, state, badge, children, testId }: {
+  n: number; title: string; description: string; state: StepState; badge?: React.ReactNode; children?: React.ReactNode; testId: string;
+}) {
+  return (
+    <section
+      data-testid={testId}
+      className={cn(
+        "rounded-xl border bg-card shadow-[var(--shadow-card)] transition-colors",
+        state === "current" && "border-primary/40 ring-4 ring-primary/5",
+        state === "todo" && "bg-card/60",
+      )}
+    >
+      <header className="flex items-start gap-3 px-5 pt-4 pb-3">
+        <span
+          className={cn(
+            "mt-0.5 grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold",
+            state === "done" ? "bg-primary-soft text-primary" : state === "current" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+          )}
+          aria-hidden
+        >
+          {state === "done" ? <Check className="size-3.5" /> : n}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className={cn("flex flex-wrap items-center gap-2 text-[15px] font-semibold", state === "todo" && "text-muted-foreground")}>
+            {n}. {title} {badge}
+            {state === "current" ? <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-medium text-primary">Đang ở bước này</span> : null}
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+        </div>
+        {state === "todo" ? <Lock className="mt-1 size-4 shrink-0 text-muted-foreground/60" aria-label="Chưa tới bước này" /> : null}
+      </header>
+      {children ? <div className="px-5 pb-5">{children}</div> : null}
+    </section>
+  );
+}
+
+/** Chọn trạng thái hạng mục bằng 3 nút liền nhau (radio, dùng được bằng bàn phím). */
+function ItemPicker({ kind, label, value }: { kind: string; label: string; value: string }) {
+  const opts = [["todo", "Chưa làm"], ["doing", "Đang làm"], ["done", "Hoàn thành"]] as const;
+  return (
+    <fieldset className="flex flex-col gap-1.5">
+      <legend className="mb-1.5 text-[13px] font-medium">{label}</legend>
+      <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+        {opts.map(([v, l]) => (
+          <label key={v} className="relative">
+            <input type="radio" name={kind} value={v} defaultChecked={value === v} className="peer sr-only" />
+            <span className={cn(
+              "block cursor-pointer rounded-md px-1.5 py-1.5 text-center text-xs font-medium text-muted-foreground transition-colors hover:text-foreground",
+              "peer-focus-visible:outline-2 peer-focus-visible:outline-ring",
+              v === "done" ? "peer-checked:bg-emerald-600 peer-checked:text-white" : v === "doing" ? "peer-checked:bg-amber-400 peer-checked:text-amber-950" : "peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-xs",
+            )}>{l}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 

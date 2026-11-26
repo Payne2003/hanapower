@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   // BUILD_STANDALONE=1 (Dockerfile) bật "standalone": cho phép đóng gói chạy bằng `node server.js` trong Docker (cấu hình tại văn phòng).
   output: process.env.BUILD_STANDALONE === "1" ? "standalone" : undefined,
   poweredByHeader: false,
+  // Cho phép tải tệp Excel (nhập dữ liệu) tối đa 10 MB qua server action.
+  experimental: { serverActions: { bodySizeLimit: "10mb" } },
   async headers() {
     return [
       {

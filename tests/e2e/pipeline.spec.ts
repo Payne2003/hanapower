@@ -30,7 +30,11 @@ test("đăng nhập sai báo lỗi tiếng Việt", async ({ page }) => {
 
 test("bảng video tháng 11 giống bảng báo cáo gốc", async ({ browser }) => {
   const p = await login(browser, "tien@hanamedia.local");
+  // Bảng gọn ở trang Video
   await p.goto("/video?thang=2026-11");
+  await expect(p.getByTestId("video-row").filter({ hasText: "D0004" })).toContainText("Đã nhận đủ");
+  // Bảng đầy đủ cột như Google Sheet ở Báo cáo tháng
+  await p.goto("/bao-cao?thang=2026-11");
   const row = p.getByTestId("video-row").filter({ hasText: "D0004" });
   await expect(row).toContainText("báo tuyết và mèo pallas");
   await expect(row).toContainText("Hiếu");
@@ -48,7 +52,7 @@ test("quy trình đầy đủ từ ý tưởng đến đăng kênh", async ({ br
   // 1) Content (Hiếu) tạo video, chọn Editor Duy
   const hieu = await login(browser, "hieu@hanamedia.local");
   await hieu.getByRole("link", { name: "Video", exact: true }).click();
-  await hieu.getByText("+ Tạo video mới").click();
+  await hieu.getByText("Tạo video mới").click();
   await hieu.getByLabel("Tên video / chủ đề").fill(title);
   await hieu.getByLabel("Ý tưởng / yêu cầu").fill("Góc kể: linh cẩu phản công, tham khảo video đối thủ.");
   await hieu.getByLabel("Editor tiếp nhận").selectOption({ label: "Duy" });
@@ -65,7 +69,7 @@ test("quy trình đầy đủ từ ý tưởng đến đăng kênh", async ({ br
 
   // Hoàn thành 4 hạng mục + link → bàn giao
   for (const label of ["Nguồn thật", "Video AI", "Kịch bản / VO", "Sơ đồ dựng"]) {
-    await hieu.getByLabel(label, { exact: true }).selectOption("done");
+    await hieu.getByRole("group", { name: label, exact: true }).getByText("Hoàn thành").click();
   }
   await hieu.getByLabel("Link tài nguyên (Google Drive…)").fill("https://drive.google.com/drive/folders/thu-nghiem");
   await hieu.getByRole("button", { name: "Lưu & bàn giao cho Editor" }).click();

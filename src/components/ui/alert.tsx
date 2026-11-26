@@ -9,12 +9,13 @@ const tones = {
 };
 
 export function Alert({ tone = "info", className, ...props }: React.HTMLAttributes<HTMLDivElement> & { tone?: keyof typeof tones }) {
-  return <div role={tone === "error" ? "alert" : "status"} className={cn("rounded-md border px-3 py-2 text-sm", tones[tone], className)} {...props} />;
+  return <div role={tone === "error" ? "alert" : "status"} className={cn("rounded-lg border px-3.5 py-2.5 text-sm leading-relaxed", tones[tone], className)} {...props} />;
 }
 
-export function EmptyState({ title, description, children }: { title: string; description?: string; children?: React.ReactNode }) {
+export function EmptyState({ title, description, icon, children }: { title: string; description?: string; icon?: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed bg-card px-6 py-10 text-center">
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-card/60 px-6 py-12 text-center">
+      {icon ? <div className="mb-1 grid size-11 place-items-center rounded-full bg-primary-soft text-primary [&_svg]:size-5">{icon}</div> : null}
       <p className="font-medium">{title}</p>
       {description ? <p className="max-w-md text-sm text-muted-foreground">{description}</p> : null}
       {children}
