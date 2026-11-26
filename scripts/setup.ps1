@@ -15,6 +15,17 @@ param(
   [switch]$Elevated
 )
 $ErrorActionPreference = "Stop"
+# Bộ cài (NSIS) là chương trình 32-bit nên có thể mở PowerShell 32-bit (SysWOW64). Trong chế độ đó Windows
+# giấu wsl.exe và trỏ "Program Files" sang thư mục (x86) → chạy lại bằng PowerShell 64-bit.
+if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
+  $ps64 = Join-Path $env:windir "sysnative\WindowsPowerShell\v1.0\powershell.exe"
+  $fwd = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"") + @(if ($ResetData) { "-ResetData" }) + @(if ($Resume) { "-Resume" }) + @(if ($Elevated) { "-Elevated" })
+  $p = Start-Process $ps64 -ArgumentList $fwd -Wait -PassThru -NoNewWindow
+  exit $p.ExitCode
+}
+$PS64 = Join-Path $env:windir "System32\WindowsPowerShell\v1.0\powershell.exe"
+$ProgramFiles64 = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
+
 # Hiển thị đúng tiếng Việt trong cửa sổ PowerShell (mặc định Windows dùng bảng mã cũ)
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $OutputEncoding = [Text.Encoding]::UTF8; chcp.com 65001 > $null } catch { }
 $ProgressPreference = "SilentlyContinue"   # tải tệp nhanh hơn nhiều trên PowerShell 5.1
@@ -22,7 +33,7 @@ $ProgressPreference = "SilentlyContinue"   # tải tệp nhanh hơn nhiều trê
 $Root = Split-Path $PSScriptRoot -Parent
 Set-Location $Root
 $SupabaseCli = "supabase@2.122.1"
-$DockerExe = Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"
+$DockerExe = Join-Path $ProgramFiles64 "Docker\Docker\Docker Desktop.exe"
 $Marker = Join-Path $Root ".hana-installed"
 $LogFile = Join-Path $Root "cai-dat.log"
 try { Start-Transcript -Path $LogFile -Append | Out-Null } catch { }
@@ -57,7 +68,7 @@ function Get-File($url, $dest) {
   catch { Fail "Không tải được tệp cài đặt: $($_.Exception.Message). Kiểm tra kết nối Internet rồi chạy lại." }
 }
 function Find-Node {
-  foreach ($p in @("$env:ProgramFiles\nodejs", "${env:ProgramFiles(x86)}\nodejs")) {
+  foreach ($p in @("$ProgramFiles64\nodejs", "$env:ProgramFiles\nodejs")) {
     if (Test-Path "$p\node.exe") { if ($env:Path -notlike "*$p*") { $env:Path = "$p;$env:Path" }; return $true }
   }
   return (Has node)
@@ -81,7 +92,8 @@ function Install-Node {
 function Install-Docker {
   Step "Cài Docker Desktop (tải khoảng 500 MB từ docker.com)"
   $exe = Join-Path $env:TEMP "DockerDesktopInstaller.exe"
-  Get-File "https://desktop.docker.com/win/main/$Arch/Docker%20Desktop%20Installer.exe" $exe
+  $dockerArch = if ($Arch -eq "arm64") { "arm64" } else { "amd64" }   # Docker dùng tên amd64, không phải x64
+  Get-File "https://desktop.docker.com/win/main/$dockerArch/Docker%20Desktop%20Installer.exe" $exe
   Info "Đang cài Docker Desktop (5–10 phút, cửa sổ có thể đứng yên — vui lòng chờ)…"
   $p = Start-Process $exe -ArgumentList @("install", "--quiet", "--accept-license") -Wait -PassThru
   if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { Fail "Trình cài Docker Desktop báo lỗi (mã $($p.ExitCode))." }
@@ -123,7 +135,7 @@ if ($needNode -or $needDocker -or $needWsl) {
     if ($Resume) { $elevArgs += "-Resume" }
     try { Stop-Transcript | Out-Null } catch { }
     try {
-      $p = Start-Process powershell.exe -Verb RunAs -ArgumentList $elevArgs -Wait -PassThru
+      $p = Start-Process $PS64 -Verb RunAs -ArgumentList $elevArgs -Wait -PassThru
     } catch { Fail "Không có quyền quản trị. Chạy lại và chọn 'Yes' khi Windows hỏi." }
     exit $p.ExitCode
   }
@@ -216,7 +228,7 @@ $links = @(
 )
 foreach ($l in $links) {
   $s = $shell.CreateShortcut($l)
-  $s.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+  $s.TargetPath = $PS64
   $s.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$Root\scripts\start.ps1`""
   $s.WorkingDirectory = $Root
   $s.IconLocation = "$Root\public\icons\app.ico"
@@ -235,5 +247,5 @@ Write-Host "  Mật khẩu: MatKhau@123" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 $a = Read-Host "Mở ứng dụng ngay? (C/k)"
 if ($a -eq "" -or $a -match "^[cCyY]") {
-  Start-Process powershell.exe -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$Root\scripts\start.ps1`"") -WorkingDirectory $Root
+  Start-Process $PS64 -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$Root\scripts\start.ps1`"") -WorkingDirectory $Root
 }

@@ -4,12 +4,13 @@
 ; Cài đè bản mới lên bản cũ: dữ liệu đã nhập được giữ nguyên.
 Unicode True
 !include "MUI2.nsh"
+!include "x64.nsh"
 
 !ifndef STAGE
   !error "Cần /DSTAGE=<thư mục mã nguồn đã chuẩn bị>"
 !endif
 !ifndef VERSION
-  !define VERSION "0.2.1"
+  !define VERSION "0.2.2"
 !endif
 
 Name "HANA MEDIA"
@@ -57,7 +58,13 @@ Section "HANA MEDIA" SecMain
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoModify" 1
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoRepair" 1
   ; Chạy phần cài đặt tự động (không chờ — cửa sổ PowerShell hiện tiến trình)
-  Exec '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\scripts\setup.ps1"'
+  ${If} ${RunningX64}
+    ${DisableX64FSRedirection}
+  ${EndIf}
+  Exec '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\scripts\setup.ps1"'
+  ${If} ${RunningX64}
+    ${EnableX64FSRedirection}
+  ${EndIf}
 SectionEnd
 
 Section "Uninstall"

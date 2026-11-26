@@ -3,10 +3,21 @@
   Mở ứng dụng HANA MEDIA trên máy này: bật Supabase cục bộ, build (lần đầu), chạy máy chủ và mở trình duyệt.
 #>
 $ErrorActionPreference = "Stop"
+# Bộ cài (NSIS) là chương trình 32-bit nên có thể mở PowerShell 32-bit (SysWOW64). Trong chế độ đó Windows
+# giấu wsl.exe và trỏ "Program Files" sang thư mục (x86) → chạy lại bằng PowerShell 64-bit.
+if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
+  $ps64 = Join-Path $env:windir "sysnative\WindowsPowerShell\v1.0\powershell.exe"
+  $fwd = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"") + @()
+  $p = Start-Process $ps64 -ArgumentList $fwd -Wait -PassThru -NoNewWindow
+  exit $p.ExitCode
+}
+$PS64 = Join-Path $env:windir "System32\WindowsPowerShell\v1.0\powershell.exe"
+$ProgramFiles64 = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
+
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $OutputEncoding = [Text.Encoding]::UTF8; chcp.com 65001 > $null } catch { }
 Set-Location (Split-Path $PSScriptRoot -Parent)
 $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
-if (Test-Path "$env:ProgramFiles\nodejs\node.exe") { $env:Path = "$env:ProgramFiles\nodejs;$env:Path" }
+if (Test-Path "$ProgramFiles64\nodejs\node.exe") { $env:Path = "$ProgramFiles64\nodejs;$env:Path" }
 function Test-Native([scriptblock]$Command) {
   # Chạy lệnh ngoài, chỉ quan tâm mã thoát; không để thông báo lỗi (stderr) làm dừng script trên PowerShell 5.1.
   $old = $ErrorActionPreference
@@ -19,7 +30,7 @@ if (-not (Test-Path .env.local)) { Fail "Chưa cài đặt xong. Chạy lại b�
 Write-Host "==> Khởi động HANA MEDIA…" -ForegroundColor Green
 if (-not (Test-Native { docker info })) {
   # Tự mở Docker Desktop và đợi sẵn sàng
-  $DockerExe = Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"
+  $DockerExe = Join-Path $ProgramFiles64 "Docker\Docker\Docker Desktop.exe"
   if (Test-Path $DockerExe) { Start-Process $DockerExe }
   Write-Host "    Đang mở Docker Desktop" -NoNewline
   $deadline = (Get-Date).AddMinutes(5)
