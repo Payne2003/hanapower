@@ -76,7 +76,19 @@ if (-not (Test-Path .next\BUILD_ID) -or $srcNow -ne "$srcOld".Trim()) {
   Set-Content -Path .next\.hana-source -Value $srcNow -NoNewline
 }
 
+
+# Cho máy khác trong mạng LAN truy cập (cách 1: một máy chủ, nhân viên mở trình duyệt)
+$fwName = "HANA MEDIA (cong 3000)"
+if (-not (Get-NetFirewallRule -DisplayName $fwName -ErrorAction SilentlyContinue)) {
+  Say "==> Mo cong 3000 tren tuong lua Windows cho mang noi bo (chon 'Yes' neu Windows hoi)" Green
+  $cmd = "New-NetFirewallRule -DisplayName '$fwName' -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow -Profile Private,Domain | Out-Null"
+  try { Start-Process $PS64 -Verb RunAs -Wait -ArgumentList @("-NoProfile", "-Command", $cmd) } catch { Say "    Bo qua: chua mo duoc cong 3000 (nhan vien se khong truy cap duoc)." Yellow }
+}
+$ips = @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object {
+  $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" -and $_.InterfaceAlias -notmatch "vEthernet|WSL|Loopback|Docker|VirtualBox|VMware"
+} | Select-Object -ExpandProperty IPAddress)
 Say "==> Mở http://localhost:3000 — giữ cửa sổ này mở trong lúc dùng ứng dụng" Cyan
-Say "    Tài khoản thử: leader@hanamedia.local / hieu@hanamedia.local / duy@hanamedia.local — mật khẩu MatKhau@123" Cyan
+foreach ($ip in $ips) { Say "    Nhân viên trong mạng LAN mở trình duyệt vào:  http://$($ip):3000" Yellow }
+Say "    (Máy này phải bật và giữ cửa sổ này mở. Mạng Wi-Fi/LAN phải đặt là 'Private' trong Windows.)" Gray
 Start-Job { Start-Sleep -Seconds 4; Start-Process "http://localhost:3000" } | Out-Null
 npm run start

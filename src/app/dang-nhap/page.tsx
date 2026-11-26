@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
 import { Alert } from "@/components/ui/alert";
+import { redirect } from "next/navigation";
+import { isSystemEmpty } from "../khoi-tao/actions";
 
 export const metadata: Metadata = { title: "Đăng nhập" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; loi?: string }> }) {
   const { next, loi } = await searchParams;
+  if (await isSystemEmpty()) redirect("/khoi-tao");
   return (
     <main className="grid min-h-dvh place-items-center bg-muted px-4">
       <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-sm">

@@ -1,6 +1,6 @@
 {
   "name": "hanapower",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "private": true,
   "description": "Ứng dụng quản trị công việc nội bộ (giao việc, báo cáo, tiến độ, chat) - Next.js + Supabase",
   "engines": {

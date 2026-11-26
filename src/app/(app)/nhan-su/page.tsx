@@ -5,6 +5,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RoleEditor } from "@/components/role-editor";
+import { AccountCreateForm, PasswordResetForm } from "@/components/account-forms";
+import { Disclosure } from "@/components/disclosure";
 import { ROLE_LABEL } from "@/lib/labels";
 import type { AppRole } from "@/lib/types";
 
@@ -32,6 +34,11 @@ export default async function PeoplePage() {
           {isAdmin ? "Quản lý vai trò và trạng thái tài khoản. Mọi thay đổi quyền được ghi nhật ký." : "Danh sách nhân sự trong doanh nghiệp."}
         </p>
       </header>
+      {isAdmin ? (
+        <Disclosure summary="+ Tạo tài khoản nhân viên">
+          <AccountCreateForm departments={(departments.data ?? []).map((d) => ({ id: d.id as string, name: d.name as string }))} />
+        </Disclosure>
+      ) : null}
       <ul className="flex flex-col gap-2">
         {(profiles.data ?? []).map((p) => (
           <li key={p.id}>
@@ -46,7 +53,12 @@ export default async function PeoplePage() {
                     {(roleMap.get(p.id) ?? []).map((r) => <Badge key={r} className="bg-primary-soft text-primary ring-primary/30">{ROLE_LABEL[r]}</Badge>)}
                   </p>
                 </div>
-                {isAdmin ? <RoleEditor userId={p.id} roles={roleMap.get(p.id) ?? []} active={p.is_active} self={p.id === ctx.user_id} /> : null}
+                {isAdmin ? (
+                  <div className="flex flex-col gap-2">
+                    <RoleEditor userId={p.id} roles={roleMap.get(p.id) ?? []} active={p.is_active} self={p.id === ctx.user_id} />
+                    <PasswordResetForm userId={p.id} />
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           </li>

@@ -31,3 +31,15 @@ export function getServiceRoleKey(): string | undefined {
 
 /** Tên cookie phiên cố định: không phụ thuộc tên miền Supabase (nội bộ/công khai khác nhau vẫn dùng chung phiên). */
 export const AUTH_COOKIE_NAME = "sb-hanapower-auth-token";
+
+/**
+ * Cookie phiên có cờ Secure hay không. Secure bắt buộc HTTPS: bật khi địa chỉ Supabase là https
+ * (cloud, tại văn phòng sau gateway). Khi chạy trên một máy Windows phục vụ mạng LAN qua http://IP:3000
+ * thì phải tắt, nếu không máy nhân viên không lưu được phiên đăng nhập. Ghi đè bằng COOKIE_SECURE=true|false.
+ */
+export function cookieSecure(): boolean {
+  const v = process.env.COOKIE_SECURE?.trim().toLowerCase();
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return process.env.NODE_ENV === "production" && getPublicEnv().supabaseUrl.startsWith("https://");
+}

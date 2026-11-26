@@ -1,14 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { AUTH_COOKIE_NAME, getPublicEnv, getServerSupabaseUrl } from "@/lib/env";
+import { AUTH_COOKIE_NAME, cookieSecure, getPublicEnv, getServerSupabaseUrl } from "@/lib/env";
 
-const PUBLIC_PATHS = ["/dang-nhap", "/offline", "/manifest.webmanifest", "/sw.js", "/icons"];
+const PUBLIC_PATHS = ["/dang-nhap", "/khoi-tao", "/offline", "/manifest.webmanifest", "/sw.js", "/icons"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
   const { supabaseAnonKey } = getPublicEnv();
   const supabase = createServerClient(getServerSupabaseUrl(), supabaseAnonKey, {
-    cookieOptions: { name: AUTH_COOKIE_NAME, sameSite: "lax", secure: process.env.NODE_ENV === "production" },
+    cookieOptions: { name: AUTH_COOKIE_NAME, sameSite: "lax", secure: cookieSecure() },
     cookies: {
       getAll() {
         return request.cookies.getAll();

@@ -14,7 +14,9 @@ for (const f of [".env.local", ".env"]) {
 }
 const argv = process.argv.slice(2);
 const opt = (k) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : undefined; };
-const org = opt("org"), email = opt("email")?.toLowerCase(), name = opt("name"), password = opt("password");
+const org = opt("org"), email = opt("email")?.toLowerCase(), name = opt("name");
+// Mật khẩu có thể truyền qua biến môi trường BOOTSTRAP_PASSWORD để không lộ trong danh sách tiến trình.
+const password = opt("password") ?? process.env.BOOTSTRAP_PASSWORD;
 const timezone = opt("timezone") ?? "Asia/Ho_Chi_Minh";
 if (!org || !email || !name || !password) {
   console.error('Thiếu tham số. Ví dụ: --org "Công ty ABC" --email admin@abc.vn --name "Nguyễn Văn A" --password "..."');

@@ -2,14 +2,14 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { AUTH_COOKIE_NAME, getPublicEnv, getServerSupabaseUrl, getServiceRoleKey } from "@/lib/env";
+import { AUTH_COOKIE_NAME, cookieSecure, getPublicEnv, getServerSupabaseUrl, getServiceRoleKey } from "@/lib/env";
 
 /** Client dùng danh tính người dùng hiện tại (RLS áp dụng). Dùng cho mọi thao tác thông thường. */
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
   const { supabaseAnonKey } = getPublicEnv();
   return createServerClient(getServerSupabaseUrl(), supabaseAnonKey, {
-    cookieOptions: { name: AUTH_COOKIE_NAME, sameSite: "lax", secure: process.env.NODE_ENV === "production" },
+    cookieOptions: { name: AUTH_COOKIE_NAME, sameSite: "lax", secure: cookieSecure() },
     cookies: {
       getAll() {
         return cookieStore.getAll();
