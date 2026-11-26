@@ -5,9 +5,9 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Hana Power – Quản trị công việc",
-    short_name: "Hana Power",
-    description: "Giao việc, báo cáo tiến độ và trao đổi nội bộ",
+    name: "HANA MEDIA – Quản lý sản xuất video",
+    short_name: "HANA MEDIA",
+    description: "Quản lý sản xuất video: Content, bàn giao, dựng, duyệt và đăng kênh",
     lang: "vi",
     start_url: "/",
     scope: "/",
@@ -21,8 +21,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "Việc của tôi", url: "/viec-cua-toi" },
-      { name: "Báo cáo ngày", url: "/bao-cao" },
+      { name: "Video", url: "/video" },
+      { name: "Báo cáo tháng", url: "/bao-cao" },
     ],
   };
 }

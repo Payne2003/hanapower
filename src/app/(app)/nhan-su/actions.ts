@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { toUserMessage } from "@/lib/errors";
 import type { ActionResult } from "@/lib/types";
 
-const roles = ["system_admin", "department_manager", "project_manager", "employee"] as const;
+const roles = ["system_admin", "manager", "content", "editor"] as const;
 
 export async function setRolesAction(_p: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const userId = z.guid().safeParse(fd.get("user_id"));

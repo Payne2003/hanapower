@@ -4,17 +4,46 @@ Quy ước: **Đã chạy & kiểm thử** = mã đã triển khai và có kiể
 
 | # | Giai đoạn | Trạng thái |
 |---|---|---|
-| 1 | Nền tảng: Next.js, Supabase, migration, dữ liệu mẫu, script PowerShell | **Đã chạy & kiểm thử** (script `.ps1` chưa chạy trên Windows thật — xem dưới) |
-| 2 | Nhân sự và quyền: phòng ban, vai trò, thành viên dự án, RLS | **Đã chạy & kiểm thử** cho phạm vi lát cắt 1. Chưa có: giao diện tạo tài khoản/phòng ban (đang dùng `bootstrap-org.mjs` + seed) |
-| 3 | Luồng nghiệp vụ đầu tiên: giao việc → báo cáo ngày → tiến độ → duyệt | **Đã chạy & kiểm thử** |
-| 4 | Báo cáo tuần, thông báo, danh sách & Kanban | **Một phần**: danh sách + Kanban (chỉ xem) đã có. Báo cáo tuần, thông báo: chưa làm |
-| 5 | Chat thời gian thực | **Chưa làm** (đã xác minh Realtime tự lưu trữ hoạt động — xem giai đoạn 7) |
-| 6 | Hoàn thiện PWA | **Một phần**: manifest, icon, `display: standalone`. Chưa có service worker, trang ngoại tuyến |
-| 7 | Kiểm thử hai máy, chạy thử một phòng ban; cấu hình cloud / tại văn phòng | **Một phần**: cấu hình tại văn phòng đã chạy và kiểm thử trong Docker (kể cả không có Internet); cloud mới có tài liệu. Chưa kiểm thử hai máy thật / VPN |
+| 1 | Nền tảng: Next.js, Supabase, migration, dữ liệu mẫu, script PowerShell | **Đã chạy & kiểm thử** (script `.ps1` chưa chạy trên Windows thật) |
+| 2 | Nhân sự và quyền: vai trò Leader / Content / Editor / Quản trị, RLS | **Đã chạy & kiểm thử**. Chưa có giao diện tạo tài khoản (dùng `bootstrap-org.mjs` + seed) |
+| 3 | Quy trình sản xuất video (thay Google Sheet): Content → bàn giao → Editor → dựng → duyệt → đăng | **Đã chạy & kiểm thử** |
+| 4 | Báo cáo tháng, thông báo trong ứng dụng, bảng & Kanban | **Đã chạy & kiểm thử** (thông báo hiện khi tải trang; đẩy thời gian thực chưa làm) |
+| 5 | Chat thời gian thực | **Chưa làm** (đã có trao đổi theo từng video; Realtime tự lưu trữ đã xác minh hoạt động) |
+| 6 | Hoàn thiện PWA | **Một phần**: manifest, icon, cửa sổ độc lập. Chưa có service worker, trang ngoại tuyến |
+| 7 | Kiểm thử hai máy, chạy thử một phòng ban; cloud / tại văn phòng | **Một phần**: tại văn phòng đã chạy trong Docker (cả không Internet); cloud mới có tài liệu |
 
 ---
 
-## Giai đoạn 1–3: Lát cắt đầu tiên (2026-11-26)
+## Chuyển sang quy trình công ty media (2026-11-26)
+
+Theo "Bảng báo cáo bộ phận content HANA MEDIA", bỏ phần dự án / công việc / báo cáo ngày chung chung, thay bằng quy trình sản xuất video.
+
+### Đã chạy
+
+- **CSDL**: `0100` (vai trò mới: `system_admin`, `manager`, `content`, `editor`) + `0200_media_pipeline`: `channels`, `org_counters`, `videos`, `video_items` (4 hạng mục), `video_events`, `video_comments`, `notifications`; RPC `create_video`, `update_video_info`, `assign_video`, `update_content`, `submit_handover`, `confirm_handover`, `update_edit`, `submit_for_review`, `review_video`, `publish_video`, `set_video_hold`, `add_video_comment`, `upsert_channel`, `mark_notifications_read`.
+- **Giao diện**: Tổng quan (việc cần làm theo vai trò, dây chuyền, chỉ số tháng, quá hạn); Video (bảng giống sheet, lọc tháng/giai đoạn/người, Kanban, tạo video); chi tiết video theo 4 bước + phân công + tạm dừng/hủy + trao đổi + lịch sử; Báo cáo tháng (chỉ số, theo Content, theo Editor, bảng, xuất CSV UTF-8 cùng cột với sheet); Thông báo; Cài đặt → Kênh phát hành.
+- **Dữ liệu mẫu**: 9 video tháng 11 từ sheet (Hiếu, Duy, Hòa, Tiện…), link Drive thay bằng link giả.
+
+### Kết quả kiểm thử
+
+| Bộ | Kết quả | Nội dung chính |
+|---|---|---|
+| `tsc` strict, ESLint | Đạt, 0 cảnh báo | |
+| Unit | **7/7** | Trạng thái Content khớp sheet, điều kiện bàn giao, việc cần làm theo vai trò, quá hạn, tháng, chỉ số tháng, CSV chống chèn công thức |
+| CSDL (Postgres thật) | **17/17** | Cả đội xem bảng, không thấy công ty khác; khóa ngoại chặn gán người/kênh công ty khác; anon và UPDATE trực tiếp bị từ chối; tài khoản khóa mất quyền; Content tự tạo (mã tự tăng), không tạo hộ người khác; Editor không tạo được; Leader phân công đúng vai trò; **tạo đồng thời không trùng mã**; phân công lại có nhật ký; chỉ Content phụ trách sửa Content; **bàn giao chặn khi thiếu hạng mục/link**; không sửa Content sau bàn giao; Editor khác không xác nhận được; yêu cầu bổ sung bắt buộc ghi chú và trả về Content; Editor/Content không tự duyệt; yêu cầu sửa bắt buộc ghi chú; không nhảy bước; tạm dừng/hủy chỉ Leader; thông báo chỉ người nhận thấy; người ngoài không bình luận được; chỉ quản trị đổi vai trò |
+| E2E Playwright | **5/5** | Đăng nhập sai; bảng tháng 11 khớp sheet (D0004: Hiếu → Hòa, Đã nhận đủ, ghi chú Edit); **toàn bộ quy trình** Content tạo → bàn giao bị chặn khi thiếu → bàn giao → Editor yêu cầu bổ sung → Content thấy thông báo, bổ sung → Editor nhận đủ, dựng, nộp duyệt → Leader yêu cầu sửa → Editor nộp lại → Leader duyệt → đăng → báo cáo tháng + tải CSV đúng cột; Editor không thấy nút của video không thuộc mình; điện thoại dạng thẻ, không cuộn ngang |
+
+### Cần làm tiếp / cần môi trường
+
+- Xác nhận các giả định trong README (đặc biệt: Leader là người duyệt và đăng; có cần bước Thumbnail/Tiêu đề SEO riêng không).
+- Nhập dữ liệu thật các tháng còn lại từ Google Sheet (có thể viết công cụ nhập từ tệp Excel).
+- Đẩy thông báo thời gian thực, chat, PWA ngoại tuyến; chạy thử trên Windows/Edge và triển khai thật khi có cấu hình.
+
+---
+
+## (Lưu trữ) Giai đoạn 1–3: Lát cắt đầu tiên dạng quản lý công việc chung (2026-11-26)
+
+> Phần nghiệp vụ dưới đây đã được thay bằng quy trình sản xuất video ở trên; hạ tầng và cấu hình triển khai vẫn giữ nguyên.
 
 ### Đã chạy
 

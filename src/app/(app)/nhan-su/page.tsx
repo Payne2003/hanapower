@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Nhân sự" };
 export default async function PeoplePage() {
   const ctx = await requireContext();
   const isAdmin = can(ctx, "users.manage");
-  if (!isAdmin && !hasRole(ctx, "department_manager")) redirect("/");
+  if (!isAdmin && !hasRole(ctx, "manager")) redirect("/");
   const supabase = await createSupabaseServerClient();
   const [profiles, roles, departments] = await Promise.all([
     supabase.from("profiles").select("id, full_name, email, job_title, department_id, is_active").order("full_name"),

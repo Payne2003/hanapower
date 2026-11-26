@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { requireContext } from "@/lib/auth";
+import { requireContext, can } from "@/lib/auth";
+import { getChannels } from "@/lib/queries";
+import { ChannelForm } from "@/components/channel-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PasswordForm } from "@/components/password-form";
 import { ROLE_LABEL } from "@/lib/labels";
@@ -8,6 +10,8 @@ export const metadata: Metadata = { title: "Cài đặt" };
 
 export default async function SettingsPage() {
   const ctx = await requireContext();
+  const canChannels = can(ctx, "channels.manage");
+  const channels = canChannels ? await getChannels() : [];
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <h1 className="text-xl font-semibold">Cài đặt</h1>
@@ -23,6 +27,15 @@ export default async function SettingsPage() {
           </dl>
         </CardContent>
       </Card>
+      {canChannels ? (
+        <Card>
+          <CardHeader><CardTitle>Kênh phát hành</CardTitle></CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {channels.map((c) => <ChannelForm key={c.id} channel={c} />)}
+            <div className="border-t pt-3"><ChannelForm /></div>
+          </CardContent>
+        </Card>
+      ) : null}
       <Card>
         <CardHeader><CardTitle>Đổi mật khẩu</CardTitle></CardHeader>
         <CardContent><PasswordForm /></CardContent>

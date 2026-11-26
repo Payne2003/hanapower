@@ -1,6 +1,6 @@
 # Kiến trúc hệ thống
 
-Ứng dụng quản trị công việc nội bộ: **một ứng dụng Next.js** (App Router, TypeScript strict) + **Supabase** (PostgreSQL, Auth, Realtime, Storage). Cùng một mã nguồn chạy được ở hai cấu hình triển khai; địa chỉ Supabase được đọc **lúc chạy** (`SUPABASE_PUBLIC_URL`, `SUPABASE_INTERNAL_URL`) nên một bản build dùng được cho cả hai.
+Ứng dụng quản lý sản xuất video của HANA MEDIA: **một ứng dụng Next.js** (App Router, TypeScript strict) + **Supabase** (PostgreSQL, Auth, Realtime, Storage). Cùng một mã nguồn chạy được ở hai cấu hình triển khai; địa chỉ Supabase được đọc **lúc chạy** (`SUPABASE_PUBLIC_URL`, `SUPABASE_INTERNAL_URL`) nên một bản build dùng được cho cả hai.
 
 ## 1. Triển khai
 
@@ -87,95 +87,99 @@ flowchart LR
 
 ## 2. Quan hệ dữ liệu
 
-Mọi bảng nghiệp vụ có `org_id`; khóa ngoại ghép `(org_id, id)` khiến dự án, công việc, báo cáo **không thể** liên kết sang doanh nghiệp khác, kể cả khi ghi trực tiếp vào CSDL.
+Mọi bảng nghiệp vụ có `org_id`; khóa ngoại ghép `(org_id, id)` khiến video, người phụ trách, kênh **không thể** liên kết sang doanh nghiệp khác, kể cả khi ghi trực tiếp vào CSDL.
 
 ```mermaid
 erDiagram
-  organizations ||--o{ departments : "có"
-  organizations ||--o{ profiles : "có"
-  departments ||--o{ profiles : "thuộc"
-  profiles ||--o| departments : "quản lý (manager_id)"
-  profiles ||--o{ user_roles : "có vai trò"
+  organizations ||--o{ profiles : "nhân sự"
+  organizations ||--o{ departments : "bộ phận"
+  profiles ||--o{ user_roles : "vai trò"
   role_permissions }o--|| user_roles : "vai trò → quyền"
-  organizations ||--o{ projects : "có"
-  profiles ||--o{ projects : "quản lý (manager_id)"
-  projects ||--o{ project_members : "thành viên"
-  profiles ||--o{ project_members : "tham gia"
-  projects ||--o{ tasks : "gồm"
-  project_members ||--o{ tasks : "phụ trách (project_id, assignee_id)"
-  tasks ||--o{ task_events : "lịch sử"
-  tasks ||--o{ task_comments : "bình luận"
-  profiles ||--o{ daily_reports : "viết (1/ngày)"
-  daily_reports ||--o{ daily_report_items : "dòng"
-  tasks ||--o{ daily_report_items : "được báo cáo"
-  daily_reports ||--o{ task_events : "nguồn cập nhật"
+  organizations ||--o{ channels : "kênh"
+  organizations ||--|| org_counters : "đếm mã D0001…"
+  organizations ||--o{ videos : "video"
+  channels ||--o{ videos : "phát hành"
+  profiles ||--o{ videos : "Content phụ trách"
+  profiles ||--o{ videos : "Editor tiếp nhận"
+  videos ||--|{ video_items : "4 hạng mục"
+  videos ||--o{ video_events : "lịch sử"
+  videos ||--o{ video_comments : "trao đổi"
+  videos ||--o{ notifications : "thông báo"
+  profiles ||--o{ notifications : "người nhận"
   organizations ||--o{ audit_logs : "nhật ký"
 
-  organizations { uuid id PK; text name; text timezone }
-  profiles { uuid id PK "= auth.users.id"; uuid org_id FK; uuid department_id FK; bool is_active }
-  user_roles { uuid user_id PK; app_role role PK; uuid org_id FK }
-  projects { uuid id PK; uuid org_id FK; uuid manager_id FK; date start_date; date due_date; project_status status }
-  project_members { uuid project_id PK; uuid user_id PK; text member_role }
-  tasks { uuid id PK; uuid project_id FK; uuid assignee_id FK; task_status status; int progress "0-100"; numeric weight ">0"; bool is_blocked }
-  daily_reports { uuid id PK; uuid user_id FK; date report_date "UNIQUE(user_id, report_date)"; report_status status }
-  daily_report_items { uuid id PK; uuid report_id FK; uuid task_id FK; uuid project_id FK; int progress; text result; text blocker }
-  task_events { bigint id PK; uuid task_id FK; text event_type; text source; uuid report_id FK }
-  audit_logs { bigint id PK; uuid actor_id; text action; jsonb details }
+  videos { uuid id PK; text code "D0001 (UNIQUE theo org)"; text title; video_stage stage; date report_date "Ngày báo cáo"; date due_date "Hạn đăng"; uuid content_owner_id FK; uuid editor_id FK; text resource_url "Link tài nguyên"; handover_status handover_status "Xác nhận bàn giao"; timestamptz handover_confirmed_at "Ngày xác nhận"; text editor_note "Ghi chú Edit"; int supplement_count; int edit_progress; text draft_url; int revision_count; text published_url; date published_at }
+  video_items { uuid video_id PK; text kind PK "real_footage | ai_video | script_vo | edit_map"; item_status status "Chưa làm | Đang làm | Hoàn thành" }
+  video_events { bigint id PK; text event_type; video_stage from_stage; video_stage to_stage; text note }
+  notifications { bigint id PK; uuid user_id FK; text kind; text message; timestamptz read_at }
+  channels { uuid id PK; text name; text platform; text url }
 ```
 
-Bảng sẽ thêm ở các giai đoạn sau: `weekly_reports` (bản chụp khi gửi), `notifications`, `conversations`, `conversation_members`, `messages`, `message_reads`, `task_attachments`.
+### Đối chiếu với Google Sheet cũ
 
-### Quyền và phạm vi dữ liệu
+| Cột trong sheet | Trong ứng dụng |
+|---|---|
+| STT, Ngày báo cáo, Mã dự án | Số thứ tự trong bảng, `report_date`, `code` (tự cấp) |
+| Tên dự án / video, Content phụ trách | `title`, `content_owner_id` |
+| Nguồn thật, Video AI, Kịch bản / VO, Sơ đồ dựng | `video_items` (Chưa làm / Đang làm / Hoàn thành) |
+| Link tài nguyên, Ghi chú Content | `resource_url`, `content_note` |
+| Trạng thái Content (Đang triển khai / Chờ bàn giao / Đã bàn giao) | suy ra từ `stage` — không thể lệch với xác nhận của Editor |
+| Editor tiếp nhận, Xác nhận bàn giao, Ngày xác nhận, Ghi chú Edit | `editor_id`, `handover_status`, `handover_confirmed_at`, `editor_note` |
+| (mới) | Đang dựng, link bản dựng, duyệt / yêu cầu sửa, đăng kênh, số lần bổ sung / sửa, lịch sử, thông báo |
+| Tab theo tháng | Bộ lọc tháng + trang Báo cáo tháng + xuất CSV cùng cột |
 
-- **Client chỉ được `SELECT`** (theo RLS). Mọi thao tác ghi đi qua hàm RPC `SECURITY DEFINER` kiểm tra quyền thao tác + phạm vi (doanh nghiệp, dự án, người phụ trách) rồi mới ghi, và ghi `audit_logs` cho đổi quyền, giao lại việc, duyệt/trả lại, sửa tiến độ.
-- Hàm trợ giúp ở schema `app` (không lộ qua REST): `current_org_id()`, `has_permission()`, `can_view_project()`, `can_manage_project()`, `can_view_report_item()`…
-- Vai trò mặc định: `system_admin`, `department_manager`, `project_manager`, `employee`. Danh mục quyền ở `role_permissions`. Quyền đọc chat riêng **không** nằm trong danh mục mà đi theo tư cách thành viên hội thoại (giai đoạn 5).
-- Báo cáo ngày: chủ báo cáo xem cả bản nháp; quản lý phòng ban xem báo cáo đã gửi của nhân sự phòng mình; quản lý dự án **chỉ xem các dòng** thuộc dự án mình quản lý.
+### Vai trò và quyền
 
-### Quy tắc tiến độ
+| Vai trò | Quyền chính |
+|---|---|
+| Quản trị hệ thống | Vai trò, khóa tài khoản, nhật ký, kênh |
+| Leader (`manager`) | Tạo & phân công video, sửa mọi bước, duyệt / yêu cầu sửa, ghi nhận đăng, tạm dừng / hủy, kênh, báo cáo |
+| Content | Tự tạo video (mình phụ trách), cập nhật 4 hạng mục + link, chọn Editor, bàn giao — chỉ video của mình, chỉ trước khi bàn giao |
+| Editor | Xác nhận / yêu cầu bổ sung, tiến độ dựng, nộp duyệt — chỉ video mình được giao |
 
-- Tiến độ dự án = Σ(tiến độ × trọng số) / Σ trọng số, loại việc **Đã hủy**; trọng số mặc định 1, ràng buộc `> 0`.
-- Không có việc hợp lệ → `NULL` → hiển thị “Chưa có dữ liệu tiến độ”.
-- Báo 100% → **Chờ duyệt**. Số việc hoàn tất chỉ đếm việc **Hoàn tất** (đã duyệt). Ràng buộc CSDL: `in_review/done ⇒ progress = 100`, `done ⇒ approved_at NOT NULL`.
-- Ngày “hôm nay”, quá hạn: theo `organizations.timezone` (mặc định `Asia/Ho_Chi_Minh`).
+- **Client chỉ được `SELECT`** (RLS). Mọi thao tác đi qua hàm RPC `SECURITY DEFINER`: kiểm tra vai trò, phân công và **đúng bước** rồi mới ghi; ghi `video_events`, gửi `notifications`, ghi `audit_logs` cho phân công lại, duyệt, yêu cầu sửa, đăng, hủy, đổi vai trò.
+- Cả đội trong công ty xem được bảng video (như Google Sheet chung); thông báo chỉ người nhận xem được.
 
-## 3. Luồng gửi báo cáo ngày
+### Quy tắc chuyển bước (thực thi trong CSDL)
+
+- Bàn giao chỉ khi **cả 4 hạng mục Hoàn thành + có link tài nguyên + đã chọn Editor**. Sau khi bàn giao, Content không sửa được phần Content nữa.
+- **Yêu cầu bổ sung** và **yêu cầu sửa** bắt buộc ghi chú; video quay về bước trước, bộ đếm `supplement_count` / `revision_count` tăng.
+- Ràng buộc: `Đang dựng/Chờ duyệt/Chờ đăng/Đã đăng ⇒ handover_status = Đã nhận đủ`; `Chờ đăng/Đã đăng ⇒ đã duyệt`; `Đã đăng ⇒ có link và ngày đăng`.
+- Gửi lặp (nhấn hai lần, mạng chập chờn) ở bàn giao / xác nhận / nộp duyệt / duyệt / đăng không tạo bản ghi trùng. Khóa dòng `FOR UPDATE` tuần tự hóa thao tác đồng thời; mã video cấp bằng bộ đếm có khóa nên không trùng.
+
+## 3. Luồng bàn giao Content → Editor → Leader
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor NV as Nhân viên (trình duyệt)
-  participant UI as DailyReportForm (client)
-  participant SA as Server Action submitDailyReport
-  participant PG as PostgREST
-  participant DB as PostgreSQL: submit_daily_report()
+  actor C as Content
+  actor E as Editor
+  actor L as Leader
+  participant DB as PostgreSQL (RPC)
 
-  NV->>UI: Soạn dòng (công việc, kết quả, tiến độ, vướng mắc)
-  UI->>UI: Lưu nháp cục bộ (localStorage) mỗi lần thay đổi
-  NV->>UI: Bấm "Gửi báo cáo" (nhấn hai lần bị chặn bởi cờ inFlight)
-  UI->>SA: payload {report_date, note, items[]}
-  SA->>SA: Kiểm tra zod
-  SA->>PG: rpc('submit_daily_report') với JWT người dùng
-  PG->>DB: BEGIN (một giao dịch)
-  DB->>DB: INSERT daily_reports ON CONFLICT (user_id, report_date) DO NOTHING
-  DB->>DB: SELECT … FOR UPDATE (tuần tự hóa các lần gửi đồng thời)
-  alt Đã gửi trước đó
-    DB-->>PG: {already_submitted: true, report_id, submitted_at} — không ghi gì thêm
-  else Bản nháp
-    DB->>DB: Thay dòng báo cáo; kiểm tra từng công việc thuộc người gửi
-    loop Mỗi dòng
-      DB->>DB: app.apply_progress(): cập nhật tasks (100% → Chờ duyệt), vướng mắc
-      DB->>DB: INSERT task_events (source='daily_report', report_id)
-      DB->>DB: Ghi progress_before / status_after vào dòng
-    end
-    DB->>DB: status='submitted', submitted_at=now()
-    DB-->>PG: {already_submitted: false, …}
+  C->>DB: create_video() → D00xx, 4 hạng mục "Chưa làm"
+  DB-->>E: thông báo "Bạn là Editor tiếp nhận"
+  C->>DB: update_content(4 hạng mục, link tài nguyên)
+  C->>DB: submit_handover()
+  DB->>DB: kiểm tra 4/4 Hoàn thành + link + Editor
+  DB-->>E: thông báo "chờ bạn xác nhận"
+  alt Thiếu tài nguyên
+    E->>DB: confirm_handover('needs_more', ghi chú)
+    DB-->>C: thông báo yêu cầu bổ sung (video về "Đang chuẩn bị")
+    C->>DB: update_content() + submit_handover()
   end
-  PG->>PG: COMMIT (lỗi bất kỳ → ROLLBACK toàn bộ)
-  PG-->>SA: Kết quả
-  SA-->>UI: ok + revalidate các trang
-  UI->>UI: Xóa nháp cục bộ, router.refresh()
-  Note over UI,SA: Mất mạng: UI giữ nội dung, hiện "Gửi lỗi", nút "Gửi lại".<br/>Gửi lại an toàn vì hàm idempotent theo (người dùng, ngày).
+  E->>DB: confirm_handover('received') → Đang dựng
+  E->>DB: update_edit(tiến độ, link bản dựng)
+  E->>DB: submit_for_review() → Chờ duyệt
+  DB-->>L: thông báo "chờ duyệt"
+  alt Cần sửa
+    L->>DB: review_video('revise', ghi chú) → Đang dựng
+    DB-->>E: thông báo cần sửa
+    E->>DB: submit_for_review()
+  end
+  L->>DB: review_video('approve') → Chờ đăng
+  L->>DB: publish_video(link, ngày) → Đã đăng
+  Note over DB: Mỗi bước ghi video_events (lịch sử) trong cùng giao dịch
 ```
 
 ## 4. Tổ chức mã nguồn
@@ -183,22 +187,17 @@ sequenceDiagram
 ```
 src/
   app/
-    dang-nhap/           Đăng nhập (server action)
-    (app)/               Vùng đã đăng nhập: sidebar theo quyền
-      page.tsx           Tổng quan
-      viec-cua-toi/      Việc của tôi + cập nhật nhanh
-      du-an/             Danh sách, chi tiết, Kanban, giao việc, duyệt/trả lại
-      bao-cao/           Báo cáo ngày (nháp/gửi), báo cáo của nhân sự
-      tro-chuyen/        (giai đoạn 5)
-      nhan-su/           Vai trò, khóa tài khoản (quản trị)
-      cai-dat/           Tài khoản, đổi mật khẩu
-    manifest.ts          Manifest PWA
-  components/ui/         Thành phần kiểu shadcn/ui (Button, Card, Input…)
-  lib/                   env (cấu hình runtime), supabase (server/browser/middleware), auth, queries, progress, labels
-supabase/
-  migrations/            Migration SQL có phiên bản (tương thích Supabase CLI)
-  seed.sql               Dữ liệu mẫu
-deploy/onprem/           docker compose + Caddy cho cấu hình tại văn phòng
-scripts/                 migrate.mjs, bootstrap-org.mjs, gen-onprem-env.mjs, *.ps1
-tests/unit | db | e2e    Vitest (thuần), Vitest + Postgres thật (RLS/RPC), Playwright
+    dang-nhap/            Đăng nhập
+    (app)/                Vùng đã đăng nhập: sidebar theo quyền
+      page.tsx            Tổng quan: việc cần làm của tôi, dây chuyền, chỉ số tháng, quá hạn
+      video/              Bảng video (như sheet) / Kanban, tạo video, chi tiết video theo bước
+      bao-cao/            Báo cáo tháng + xuat/ (CSV)
+      thong-bao/          Thông báo
+      tro-chuyen/         (giai đoạn sau)
+      nhan-su/            Vai trò, khóa tài khoản
+      cai-dat/            Tài khoản, kênh phát hành, đổi mật khẩu
+  components/             video-workspace (các bước), video-table, ui/ (kiểu shadcn)
+  lib/                    env, supabase, auth, queries, pipeline (quy tắc thuần), labels
+supabase/migrations/      0100 nền tảng + 0200 quy trình sản xuất video
+tests/unit | db | e2e     Vitest, Vitest + Postgres thật, Playwright
 ```

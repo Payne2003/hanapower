@@ -40,7 +40,7 @@ try {
   await client.query("begin");
   const { rows: [o] } = await client.query("insert into public.organizations (name, timezone) values ($1, $2) returning id", [org, timezone]);
   await client.query("insert into public.profiles (id, org_id, full_name, email, job_title) values ($1, $2, $3, $4, 'Quản trị hệ thống')", [userId, o.id, name, email]);
-  await client.query("insert into public.user_roles (org_id, user_id, role) values ($1, $2, 'system_admin'), ($1, $2, 'employee')", [o.id, userId]);
+  await client.query("insert into public.user_roles (org_id, user_id, role) values ($1, $2, 'system_admin'), ($1, $2, 'manager')", [o.id, userId]);
   await client.query("insert into public.audit_logs (org_id, actor_id, action, entity_type, entity_id, details) values ($1, $2, 'org.bootstrap', 'organization', $1, $3)", [o.id, userId, { email }]);
   await client.query("commit");
   console.log(`Đã tạo doanh nghiệp "${org}" (${o.id}) và quản trị hệ thống ${email}.`);

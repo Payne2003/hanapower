@@ -29,17 +29,17 @@ await check("Không có đường ra Internet (mạng cô lập)", async () => {
 
 const sb = createClient(URL, ANON, { auth: { persistSession: false } });
 await check("Đăng nhập bằng GoTrue nội bộ", async () => {
-  const { data, error } = await sb.auth.signInWithPassword({ email: "nhanvien1@hanapower.local", password: "MatKhau@123" });
+  const { data, error } = await sb.auth.signInWithPassword({ email: "hieu@hanamedia.local", password: "MatKhau@123" });
   if (error) throw error;
   return data.user.email;
 });
 
-await check("RPC + RLS (get_my_context, project_stats)", async () => {
+await check("RPC + RLS (get_my_context, videos)", async () => {
   const { data, error } = await sb.rpc("get_my_context");
   if (error) throw error;
-  const { data: stats, error: e2 } = await sb.from("project_stats").select("project_id, progress");
+  const { data: stats, error: e2 } = await sb.from("videos").select("code, stage");
   if (e2) throw e2;
-  return `${data.full_name}, thấy ${stats.length} dự án`;
+  return `${data.full_name}, thấy ${stats.length} video`;
 });
 
 const admin = createClient(URL, SERVICE, { auth: { persistSession: false } });

@@ -54,4 +54,4 @@ Step "Chạy migration và nạp dữ liệu mẫu (XÓA dữ liệu cục bộ 
 node scripts/migrate.mjs --reset --yes --seed
 
 Write-Host "`nXong. Chạy ứng dụng: npm run dev  →  http://localhost:3000" -ForegroundColor Cyan
-Write-Host "Tài khoản mẫu: quanlyduan@hanapower.local / MatKhau@123 (xem README)" -ForegroundColor Cyan
+Write-Host "Tài khoản mẫu: leader@hanamedia.local / MatKhau@123 (xem README)" -ForegroundColor Cyan

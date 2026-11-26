@@ -11,7 +11,7 @@ export function LoginForm({ next }: { next?: string }) {
     <form action={action} className="flex flex-col gap-4" noValidate>
       <input type="hidden" name="next" value={next ?? ""} />
       <Field label="Email công việc" htmlFor="email">
-        <Input id="email" name="email" type="email" autoComplete="username" required autoFocus placeholder="ten@congty.vn" />
+        <Input id="email" name="email" type="email" autoComplete="username" required autoFocus placeholder="ten@hanamedia.vn" />
       </Field>
       <Field label="Mật khẩu" htmlFor="password">
         <Input id="password" name="password" type="password" autoComplete="current-password" required />

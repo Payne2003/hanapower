@@ -3,15 +3,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, ListChecks, FolderKanban, FileText, MessagesSquare, Users, Settings, Menu, X, LogOut,
+  LayoutDashboard, Clapperboard, FileText, Bell, MessagesSquare, Users, Settings, Menu, X, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ICONS = {
   dashboard: LayoutDashboard,
-  tasks: ListChecks,
-  projects: FolderKanban,
+  videos: Clapperboard,
   reports: FileText,
+  bell: Bell,
   chat: MessagesSquare,
   people: Users,
   settings: Settings,
@@ -99,7 +99,7 @@ export function AppNav({ items, orgName, userName, roleLabel, logoutAction }: {
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-4 border-r bg-card p-4 md:flex">
         <div className="flex items-center gap-2 px-1">
           <div className="grid size-8 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground" aria-hidden>
-            HP
+            HM
           </div>
           <span className="truncate text-sm font-semibold" title={orgName}>{orgName}</span>
         </div>

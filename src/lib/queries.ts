@@ -1,85 +1,85 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { Profile, Project, ProjectStats, Task } from "@/lib/types";
+import type { AppRole, Channel, ItemKind, ItemStatus, Notification, Person, Video, VideoComment, VideoEvent } from "@/lib/types";
 
-const TASK_COLS =
-  "id, project_id, title, description, assignee_id, priority, status, due_date, progress, weight, is_blocked, blocker_note, return_reason, updated_at";
+const VIDEO_COLS =
+  "id, code, title, brief, channel_id, priority, stage, report_date, due_date, content_owner_id, resource_url, content_note, editor_id, handover_status, handover_submitted_at, handover_confirmed_at, editor_note, supplement_count, edit_progress, draft_url, review_note, revision_count, approved_at, published_url, published_at, hold_reason, created_at, updated_at, video_items(kind, status)";
 
-/** Kết quả danh sách: lỗi → ném; null → mảng rỗng. */
-function must<T>(res: { data: T[] | null; error: { message: string } | null }, what: string): T[] {
-  if (res.error) throw new Error(`Không tải được ${what}: ${res.error.message}`);
-  return res.data ?? [];
+type Raw = Omit<Video, "items"> & { video_items: { kind: ItemKind; status: ItemStatus }[] };
+
+function toVideo(r: Raw): Video {
+  const items = { real_footage: "todo", ai_video: "todo", script_vo: "todo", edit_map: "todo" } as Record<ItemKind, ItemStatus>;
+  for (const i of r.video_items ?? []) items[i.kind] = i.status;
+  const { video_items: _ignored, ...rest } = r;
+  void _ignored;
+  return { ...rest, items };
 }
 
-/** Kết quả một bản ghi (maybeSingle): lỗi → ném; không có/không có quyền → null. */
-function one<T>(res: { data: T | null; error: { message: string } | null }, what: string): T | null {
-  if (res.error) throw new Error(`Không tải được ${what}: ${res.error.message}`);
-  return res.data ?? null;
+function fail(what: string, error: { message: string }): never {
+  throw new Error(`Không tải được ${what}: ${error.message}`);
 }
 
-export async function getProfilesMap() {
+export async function getPeople(): Promise<Person[]> {
   const supabase = await createSupabaseServerClient();
-  const rows = must<Profile>(
-    await supabase.from("profiles").select("id, full_name, email, job_title, department_id, is_active").order("full_name"),
-    "nhân sự",
-  );
-  return new Map(rows.map((p) => [p.id, p]));
-}
-
-export async function getMyTasks(userId: string) {
-  const supabase = await createSupabaseServerClient();
-  return must<Task>(
-    await supabase
-      .from("tasks")
-      .select(TASK_COLS)
-      .eq("assignee_id", userId)
-      .neq("status", "cancelled")
-      .order("due_date", { ascending: true, nullsFirst: false }),
-    "công việc",
-  );
-}
-
-export async function getProjects() {
-  const supabase = await createSupabaseServerClient();
-  const [projects, stats] = await Promise.all([
-    supabase.from("projects").select("id, name, description, manager_id, department_id, start_date, due_date, status").order("created_at", { ascending: false }),
-    supabase.from("project_stats").select("project_id, progress, total_tasks, done_tasks, review_tasks, blocked_tasks, overdue_tasks"),
+  const [p, r] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, email, job_title, department_id, is_active").order("full_name"),
+    supabase.from("user_roles").select("user_id, role"),
   ]);
-  const p = must<Project>(projects, "dự án");
-  const s = must<ProjectStats>(stats, "tiến độ dự án");
-  const byId = new Map(s.map((x) => [x.project_id, { ...x, progress: x.progress === null ? null : Number(x.progress) }]));
-  return p.map((proj) => ({ ...proj, stats: byId.get(proj.id) ?? null }));
+  if (p.error) fail("nhân sự", p.error);
+  if (r.error) fail("vai trò", r.error);
+  const roles = new Map<string, AppRole[]>();
+  for (const x of r.data ?? []) roles.set(x.user_id as string, [...(roles.get(x.user_id as string) ?? []), x.role as AppRole]);
+  return (p.data ?? []).map((x) => ({ ...(x as Omit<Person, "roles">), roles: roles.get(x.id as string) ?? [] }));
 }
 
-export async function getProject(id: string) {
+export async function getChannels(): Promise<Channel[]> {
   const supabase = await createSupabaseServerClient();
-  const [project, stats, tasks, members] = await Promise.all([
-    supabase.from("projects").select("id, name, description, manager_id, department_id, start_date, due_date, status").eq("id", id).maybeSingle(),
-    supabase.from("project_stats").select("*").eq("project_id", id).maybeSingle(),
-    supabase.from("tasks").select(TASK_COLS).eq("project_id", id).order("created_at"),
-    supabase.from("project_members").select("user_id, member_role").eq("project_id", id),
+  const { data, error } = await supabase.from("channels").select("id, name, platform, url, is_active").order("name");
+  if (error) fail("kênh", error);
+  return (data ?? []) as Channel[];
+}
+
+export type VideoFilter = { from?: string; to?: string; stage?: string; person?: string };
+
+export async function getVideos(f: VideoFilter = {}): Promise<Video[]> {
+  const supabase = await createSupabaseServerClient();
+  let q = supabase.from("videos").select(VIDEO_COLS).order("report_date", { ascending: true }).order("code", { ascending: true });
+  if (f.from) q = q.gte("report_date", f.from);
+  if (f.to) q = q.lte("report_date", f.to);
+  if (f.stage) q = q.eq("stage", f.stage);
+  if (f.person && /^[0-9a-f-]{36}$/i.test(f.person)) q = q.or(`content_owner_id.eq.${f.person},editor_id.eq.${f.person}`);
+  const { data, error } = await q;
+  if (error) fail("danh sách video", error);
+  return ((data ?? []) as unknown as Raw[]).map(toVideo);
+}
+
+/** Video đang chạy (chưa đăng/hủy), không giới hạn tháng — cho Tổng quan. */
+export async function getOpenVideos(): Promise<Video[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.from("videos").select(VIDEO_COLS).not("stage", "in", "(published,cancelled)").order("report_date");
+  if (error) fail("video đang chạy", error);
+  return ((data ?? []) as unknown as Raw[]).map(toVideo);
+}
+
+export async function getVideo(id: string) {
+  const supabase = await createSupabaseServerClient();
+  const [v, ev, cm] = await Promise.all([
+    supabase.from("videos").select(VIDEO_COLS).eq("id", id).maybeSingle(),
+    supabase.from("video_events").select("id, actor_id, event_type, from_stage, to_stage, note, created_at").eq("video_id", id).order("created_at", { ascending: false }).limit(100),
+    supabase.from("video_comments").select("id, author_id, body, created_at").eq("video_id", id).order("created_at"),
   ]);
-  const proj = one<Project>(project, "dự án");
-  if (!proj) return null;
-  const st = one<ProjectStats>(stats, "tiến độ");
+  if (v.error) fail("video", v.error);
+  if (!v.data) return null;
   return {
-    project: proj,
-    stats: st ? { ...st, progress: st.progress === null ? null : Number(st.progress) } : null,
-    tasks: must<Task>(tasks, "công việc").map((t) => ({ ...t, weight: Number(t.weight) })),
-    members: must<{ user_id: string; member_role: "manager" | "member" }>(members, "thành viên"),
+    video: toVideo(v.data as unknown as Raw),
+    events: (ev.data ?? []) as VideoEvent[],
+    comments: (cm.data ?? []) as VideoComment[],
   };
 }
 
-/** Việc đang chờ duyệt trong các dự án người dùng quản lý. */
-export async function getTasksAwaitingMyApproval(userId: string, isOrgWideManager: boolean) {
+export async function getNotifications(limit = 50): Promise<Notification[]> {
   const supabase = await createSupabaseServerClient();
-  let projectIds: string[] | null = null;
-  if (!isOrgWideManager) {
-    const { data: managed } = await supabase.from("project_members").select("project_id").eq("user_id", userId).eq("member_role", "manager");
-    projectIds = (managed ?? []).map((m) => m.project_id as string);
-    if (projectIds.length === 0) return [];
-  }
-  let q = supabase.from("tasks").select(TASK_COLS).eq("status", "in_review").order("updated_at");
-  if (projectIds) q = q.in("project_id", projectIds);
-  return must<Task>(await q, "việc chờ duyệt");
+  const { data, error } = await supabase.from("notifications").select("id, video_id, kind, message, read_at, created_at").order("created_at", { ascending: false }).limit(limit);
+  if (error) fail("thông báo", error);
+  return (data ?? []) as Notification[];
 }

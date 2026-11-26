@@ -10,10 +10,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <main className="grid min-h-dvh place-items-center bg-muted px-4">
       <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-lg bg-primary font-bold text-primary-foreground" aria-hidden>HP</div>
+          <div className="grid size-10 place-items-center rounded-lg bg-primary font-bold text-primary-foreground" aria-hidden>HM</div>
           <div>
             <h1 className="text-lg font-semibold">Đăng nhập</h1>
-            <p className="text-sm text-muted-foreground">Hệ thống quản trị công việc nội bộ</p>
+            <p className="text-sm text-muted-foreground">Quản lý sản xuất video nội bộ</p>
           </div>
         </div>
         {loi === "khong-hoat-dong" ? (

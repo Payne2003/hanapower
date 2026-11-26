@@ -2,10 +2,10 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Hana Power – Quản trị công việc", template: "%s · Hana Power" },
-  description: "Giao việc, báo cáo tiến độ và trao đổi nội bộ",
-  applicationName: "Hana Power",
-  appleWebApp: { capable: true, title: "Hana Power", statusBarStyle: "default" },
+  title: { default: "HANA MEDIA – Quản lý sản xuất video", template: "%s · HANA MEDIA" },
+  description: "Quản lý sản xuất video: Content, bàn giao, dựng, duyệt và đăng kênh",
+  applicationName: "HANA MEDIA",
+  appleWebApp: { capable: true, title: "HANA MEDIA", statusBarStyle: "default" },
   icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
 };
 
