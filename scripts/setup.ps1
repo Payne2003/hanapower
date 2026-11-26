@@ -1,76 +1,200 @@
 ﻿<#
 .SYNOPSIS
-  Cài đặt môi trường phát triển trên Windows: phụ thuộc npm, Supabase cục bộ, .env.local, migration và dữ liệu mẫu.
+  Cài đặt TỰ ĐỘNG ứng dụng HANA MEDIA trên Windows 10/11:
+  Node.js 22 LTS, WSL, Docker Desktop (nếu chưa có) → thư viện → Supabase cục bộ
+  → cấu hình → cơ sở dữ liệu + dữ liệu mẫu → đóng gói → biểu tượng trên màn hình.
 .DESCRIPTION
-  Yêu cầu: Node.js 22 LTS, Docker Desktop đang chạy (cho Supabase CLI).
-  Chạy từ thư mục gốc repository:
+  Chạy lại an toàn: bước nào đã xong thì bỏ qua; KHÔNG xóa dữ liệu đã nhập
+  (trừ khi thêm -ResetData). Nếu Windows cần khởi động lại (WSL/Docker),
+  script tự đăng ký chạy tiếp sau khi đăng nhập lại.
     powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
 #>
 param(
-  [switch]$SkipInstall,
-  [switch]$SkipSupabase
+  [switch]$ResetData,
+  [switch]$Resume,
+  [switch]$Elevated
 )
 $ErrorActionPreference = "Stop"
-Set-Location (Split-Path $PSScriptRoot -Parent)
+$Root = Split-Path $PSScriptRoot -Parent
+Set-Location $Root
+$SupabaseCli = "supabase@2.122.1"
+$DockerExe = Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"
+$Marker = Join-Path $Root ".hana-installed"
 
 function Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Green }
-
+function Info($msg) { Write-Host "    $msg" -ForegroundColor Gray }
 function Fail($msg) {
   Write-Host "`n[LỖI] $msg" -ForegroundColor Red
+  Write-Host "Chụp màn hình cửa sổ này gửi bộ phận kỹ thuật nếu cần hỗ trợ." -ForegroundColor Yellow
   Read-Host "Nhấn Enter để đóng"
   exit 1
 }
-
-Step "Kiểm tra Node.js"
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-  Fail "Chưa cài Node.js. Cài bản 22 LTS tại https://nodejs.org (hoặc: winget install OpenJS.NodeJS.LTS), rồi chạy lại."
+function Test-Admin {
+  $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+  (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
-$nodeVersion = (node --version)
-if (-not $nodeVersion.StartsWith("v22.")) { Write-Warning "Khuyến nghị Node.js 22 LTS (hiện tại: $nodeVersion)" }
+function Update-PathFromRegistry {
+  $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+}
+function Has($cmd) { [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
+function Register-Resume {
+  $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Resume"
+  New-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Force | Out-Null
+  Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "HanaMediaSetup" -Value $cmd
+}
+function Request-Reboot($why) {
+  Register-Resume
+  Write-Host "`n$why" -ForegroundColor Yellow
+  Write-Host "Sau khi khởi động lại và đăng nhập, phần cài đặt sẽ TỰ CHẠY TIẾP." -ForegroundColor Yellow
+  $a = Read-Host "Khởi động lại máy ngay bây giờ? (C/k)"
+  if ($a -eq "" -or $a -match "^[cCyY]") { Restart-Computer -Force }
+  exit 0
+}
 
-if (-not $SkipSupabase) {
-  Step "Kiểm tra Docker Desktop"
-  if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-    Fail "Chưa cài Docker Desktop. Tải tại https://www.docker.com/products/docker-desktop (hoặc: winget install Docker.DockerDesktop), mở Docker Desktop rồi chạy lại."
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "  CÀI ĐẶT HANA MEDIA – QUẢN LÝ SẢN XUẤT VIDEO" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
+if ($Resume) { Info "Tiếp tục cài đặt sau khi khởi động lại…" }
+
+# ---------------------------------------------------------------- 1. Phần mềm nền
+Update-PathFromRegistry
+$needNode = -not (Has node)
+$needDocker = (-not (Has docker)) -and (-not (Test-Path $DockerExe))
+$needWsl = $false
+try { wsl.exe --status *> $null; if ($LASTEXITCODE -ne 0) { $needWsl = $true } } catch { $needWsl = $true }
+
+if ($needNode -or $needDocker -or $needWsl) {
+  if (-not (Test-Admin)) {
+    Step "Cần quyền quản trị để cài phần mềm nền — hãy chọn 'Yes' ở hộp thoại Windows"
+    $elevArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"", "-Elevated")
+    if ($ResetData) { $elevArgs += "-ResetData" }
+    if ($Resume) { $elevArgs += "-Resume" }
+    try {
+      $p = Start-Process powershell.exe -Verb RunAs -ArgumentList $elevArgs -Wait -PassThru
+    } catch { Fail "Không có quyền quản trị. Chạy lại và chọn 'Yes' khi Windows hỏi." }
+    exit $p.ExitCode
   }
-  docker info *> $null
-  if ($LASTEXITCODE -ne 0) { Fail "Docker Desktop chưa chạy. Mở Docker Desktop, đợi biểu tượng cá voi báo 'running', rồi chạy lại." }
+  if (-not (Has winget)) {
+    Fail "Máy chưa có 'App Installer' (winget). Cài từ Microsoft Store (tìm 'App Installer') rồi chạy lại."
+  }
+  $wg = @("--accept-package-agreements", "--accept-source-agreements", "--silent", "-e")
+
+  if ($needNode) {
+    Step "Cài Node.js 22 LTS"
+    winget install --id OpenJS.NodeJS.LTS @wg
+    Update-PathFromRegistry
+    if (-not (Has node)) { Fail "Cài Node.js chưa thành công." }
+  }
+  if ($needDocker) {
+    Step "Cài Docker Desktop (có thể mất vài phút)"
+    winget install --id Docker.DockerDesktop @wg --override "install --quiet --accept-license"
+    if (-not (Test-Path $DockerExe)) { Fail "Cài Docker Desktop chưa thành công." }
+  }
+  if ($needWsl) {
+    Step "Bật WSL (nền tảng cho Docker Desktop)"
+    wsl.exe --install --no-distribution
+  }
+  if ($needDocker -or $needWsl) {
+    # WSL và nhóm docker-users chỉ có hiệu lực sau khi khởi động lại / đăng nhập lại.
+    Request-Reboot "Đã cài phần mềm nền. Windows cần khởi động lại để hoàn tất."
+  }
 }
 
-if (-not $SkipInstall) {
-  Step "Cài phụ thuộc (npm ci — đúng phiên bản trong package-lock.json)"
-  npm ci
-}
+Update-PathFromRegistry
+if (-not (Has node)) { Fail "Không tìm thấy Node.js." }
+Info "Node.js $(node --version)"
 
-if (-not $SkipSupabase) {
-  Step "Khởi động Supabase cục bộ (Docker Desktop phải đang chạy)"
-  npx --yes supabase@2.122.1 start
-  if ($LASTEXITCODE -ne 0) { Fail "Không khởi động được Supabase cục bộ (xem thông báo phía trên)." }
+# ---------------------------------------------------------------- 2. Docker chạy
+Step "Khởi động Docker Desktop"
+docker info *> $null
+if ($LASTEXITCODE -ne 0) {
+  if (Test-Path $DockerExe) { Start-Process $DockerExe }
+  $deadline = (Get-Date).AddMinutes(6)
+  do {
+    Start-Sleep -Seconds 5
+    Write-Host "." -NoNewline
+    Update-PathFromRegistry
+    docker info *> $null
+  } while ($LASTEXITCODE -ne 0 -and (Get-Date) -lt $deadline)
+  Write-Host ""
+  if ($LASTEXITCODE -ne 0) {
+    Fail "Docker Desktop chưa sẵn sàng. Mở Docker Desktop, chấp nhận điều khoản nếu được hỏi, đợi 'Engine running' rồi chạy lại."
+  }
 }
+Info "Docker đang chạy"
 
-Step "Tạo .env.local từ thông tin Supabase cục bộ"
-$status = npx --yes supabase@2.122.1 status -o env | Out-String
+# ---------------------------------------------------------------- 3. Thư viện
+Step "Cài thư viện của ứng dụng (lần đầu vài phút)"
+npm ci --no-audit --no-fund
+if ($LASTEXITCODE -ne 0) { Fail "Cài thư viện lỗi (cần Internet)." }
+Set-Content -Path (Join-Path $Root "node_modules\.hana-deps") -Value (node scripts/fingerprint.mjs --deps) -NoNewline
+
+# ---------------------------------------------------------------- 4. Supabase cục bộ
+Step "Khởi động máy chủ dữ liệu (lần đầu tải khoảng 1–2 GB, 5–15 phút)"
+npx --yes $SupabaseCli start
+if ($LASTEXITCODE -ne 0) { Fail "Không khởi động được máy chủ dữ liệu (xem thông báo phía trên)." }
+
+Step "Tạo cấu hình"
+$status = npx --yes $SupabaseCli status -o env | Out-String
 $vars = @{}
 foreach ($line in $status -split "`r?`n") {
   if ($line -match '^\s*([A-Z_]+)="?([^"]*)"?\s*$') { $vars[$Matches[1]] = $Matches[2] }
 }
-if (-not $vars["API_URL"]) { throw "Không đọc được 'supabase status'. Supabase đã chạy chưa?" }
+if (-not $vars["API_URL"]) { Fail "Không đọc được thông tin máy chủ dữ liệu." }
+$anon = if ($vars["ANON_KEY"]) { $vars["ANON_KEY"] } else { $vars["PUBLISHABLE_KEY"] }
+$service = if ($vars["SERVICE_ROLE_KEY"]) { $vars["SERVICE_ROLE_KEY"] } else { $vars["SECRET_KEY"] }
 $envContent = @"
 SUPABASE_PUBLIC_URL=$($vars["API_URL"])
-SUPABASE_ANON_KEY=$($vars["ANON_KEY"])
-SUPABASE_SERVICE_ROLE_KEY=$($vars["SERVICE_ROLE_KEY"])
+SUPABASE_ANON_KEY=$anon
+SUPABASE_SERVICE_ROLE_KEY=$service
 DATABASE_URL=$($vars["DB_URL"])
 APP_ENV=development
 "@
-if (Test-Path .env.local) {
-  Copy-Item .env.local ".env.local.bak" -Force
-  Write-Host "Đã sao lưu .env.local cũ thành .env.local.bak"
+[IO.File]::WriteAllText((Join-Path $Root ".env.local"), $envContent)
+
+# ---------------------------------------------------------------- 5. Cơ sở dữ liệu
+if ($ResetData -or -not (Test-Path $Marker)) {
+  Step "Tạo cơ sở dữ liệu và nạp dữ liệu mẫu"
+  node scripts/migrate.mjs --reset --yes --seed
+} else {
+  Step "Cập nhật cơ sở dữ liệu (giữ nguyên dữ liệu đã nhập)"
+  node scripts/migrate.mjs
 }
-Set-Content -Path .env.local -Value $envContent -Encoding UTF8
-Write-Host "Đã ghi .env.local"
+if ($LASTEXITCODE -ne 0) { Fail "Lỗi cơ sở dữ liệu (xem thông báo phía trên)." }
 
-Step "Chạy migration và nạp dữ liệu mẫu (XÓA dữ liệu cục bộ cũ)"
-node scripts/migrate.mjs --reset --yes --seed
+# ---------------------------------------------------------------- 6. Đóng gói
+Step "Đóng gói ứng dụng (1–2 phút)"
+npm run build
+if ($LASTEXITCODE -ne 0) { Fail "Đóng gói lỗi (xem thông báo phía trên)." }
+Set-Content -Path (Join-Path $Root ".next\.hana-source") -Value (node scripts/fingerprint.mjs) -NoNewline
 
-Write-Host "`nCài đặt xong. Từ nay chỉ cần nhấp đúp 2-MO-UNG-DUNG.bat để mở ứng dụng." -ForegroundColor Cyan
-Write-Host "Tài khoản mẫu: leader@hanamedia.local / MatKhau@123 (xem README)" -ForegroundColor Cyan
+# ---------------------------------------------------------------- 7. Biểu tượng
+Step "Tạo biểu tượng HANA MEDIA trên màn hình và menu Start"
+$shell = New-Object -ComObject WScript.Shell
+$links = @(
+  (Join-Path ([Environment]::GetFolderPath("Desktop")) "HANA MEDIA.lnk"),
+  (Join-Path ([Environment]::GetFolderPath("Programs")) "HANA MEDIA.lnk")
+)
+foreach ($l in $links) {
+  $s = $shell.CreateShortcut($l)
+  $s.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+  $s.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$Root\scripts\start.ps1`""
+  $s.WorkingDirectory = $Root
+  $s.IconLocation = "$Root\public\icons\app.ico"
+  $s.Description = "HANA MEDIA – Quản lý sản xuất video"
+  $s.Save()
+}
+
+Set-Content -Path $Marker -Value (Get-Date -Format s)
+Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "HanaMediaSetup" -ErrorAction SilentlyContinue
+
+Write-Host "`n==========================================" -ForegroundColor Cyan
+Write-Host "  CÀI ĐẶT XONG" -ForegroundColor Cyan
+Write-Host "  Từ nay nhấp đúp biểu tượng 'HANA MEDIA' trên màn hình để mở." -ForegroundColor Cyan
+Write-Host "  Tài khoản thử: leader@hanamedia.local / hieu@hanamedia.local / duy@hanamedia.local" -ForegroundColor Cyan
+Write-Host "  Mật khẩu: MatKhau@123" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
+$a = Read-Host "Mở ứng dụng ngay? (C/k)"
+if ($a -eq "" -or $a -match "^[cCyY]") {
+  Start-Process powershell.exe -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$Root\scripts\start.ps1`"") -WorkingDirectory $Root
+}

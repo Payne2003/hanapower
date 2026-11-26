@@ -2,24 +2,24 @@
 Hướng dẫn chạy thử trên một máy Windows
 ==========================================
 
-BƯỚC 0 – Cài 2 phần mềm (chỉ một lần)
-  1. Node.js 22 LTS:   https://nodejs.org   (chọn bản "LTS")
-  2. Docker Desktop:   https://www.docker.com/products/docker-desktop
-     Cài xong, MỞ Docker Desktop và đợi đến khi hiện "Engine running".
-  (Docker Desktop có thể yêu cầu khởi động lại máy và bật WSL lần đầu.)
+CÁCH NHANH NHẤT: chạy file HanaMedia-Setup-x.y.z.exe
+  - Bộ cài tự cài Node.js, WSL, Docker Desktop (nếu máy chưa có), máy chủ dữ liệu,
+    dữ liệu mẫu và tạo biểu tượng "HANA MEDIA" trên màn hình.
+  - Chọn "Yes" khi Windows hỏi quyền quản trị. Cần Internet.
+  - Lần đầu mất 20–40 phút. Windows có thể yêu cầu khởi động lại MỘT lần;
+    sau khi đăng nhập lại, cửa sổ cài đặt tự chạy tiếp.
+  - Khi thấy "CÀI ĐẶT XONG": từ nay nhấp đúp biểu tượng HANA MEDIA để mở.
+  - Lần đầu mở Docker Desktop có thể hỏi đăng nhập tài khoản Docker: chọn "Skip"/bỏ qua.
 
-BƯỚC 1 – Cài ứng dụng (chỉ một lần, khoảng 10–20 phút do tải dữ liệu)
-  Giải nén file zip vào một thư mục, ví dụ C:\HanaMedia
-  Nhấp đúp:  1-CAI-DAT.bat
-
-BƯỚC 2 – Mở ứng dụng (mỗi lần dùng)
-  Mở Docker Desktop trước, rồi nhấp đúp:  2-MO-UNG-DUNG.bat
-  Trình duyệt tự mở http://localhost:3000
-  Giữ cửa sổ đen mở trong lúc dùng; đóng cửa sổ = tắt ứng dụng.
+CÁCH KHÁC (từ file zip)
+  Giải nén, nhấp đúp 1-CAI-DAT.bat — làm đúng các bước như bộ cài.
+  Mỗi lần dùng: nhấp đúp biểu tượng HANA MEDIA hoặc 2-MO-UNG-DUNG.bat.
+  Ứng dụng mở tại http://localhost:3000. Giữ cửa sổ đen mở trong lúc dùng.
 
 CẬP NHẬT PHIÊN BẢN MỚI (dữ liệu đã nhập được giữ nguyên)
-  - Nếu tải bằng file zip: giải nén file zip mới ĐÈ vào thư mục cũ (chọn "Thay thế tất cả"),
-    rồi nhấp đúp 2-MO-UNG-DUNG.bat.
+  - Bộ cài: chạy file HanaMedia-Setup bản mới, giữ thư mục cài đặt như cũ.
+  - File zip: giải nén file zip mới ĐÈ vào thư mục cũ (chọn "Thay thế tất cả"),
+    rồi mở ứng dụng.
   - Nếu tải bằng Git: nhấp đúp 3-CAP-NHAT.bat, rồi 2-MO-UNG-DUNG.bat.
   Khi mở, ứng dụng tự nhận biết bản mới: cài thư viện mới (nếu có), cập nhật cấu trúc
   dữ liệu (không xóa dữ liệu), đóng gói lại. Lần mở đầu tiên sau cập nhật mất thêm 1–2 phút.
@@ -37,5 +37,5 @@ TÀI KHOẢN THỬ (mật khẩu chung: MatKhau@123)
 LƯU Ý
   - Bản này chạy trên MỘT máy để thử. Để cả đội dùng chung (văn phòng + ở xa)
     cần đưa lên máy chủ hoặc cloud – xem docs/deploy-onprem.md và docs/deploy-cloud.md.
-  - Chạy lại 1-CAI-DAT.bat sẽ XÓA dữ liệu đã nhập và nạp lại dữ liệu mẫu.
+  - Gỡ cài đặt: Settings → Apps → HANA MEDIA → Uninstall.
   - Gặp lỗi: chụp màn hình cửa sổ đen gửi lại để được hỗ trợ.

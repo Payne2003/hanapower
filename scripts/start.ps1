@@ -6,9 +6,19 @@ $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
 function Fail($msg) { Write-Host "`n[LỖI] $msg" -ForegroundColor Red; Read-Host "Nhấn Enter để đóng"; exit 1 }
 
-if (-not (Test-Path .env.local)) { Fail "Chưa cài đặt. Nhấp đúp 1-CAI-DAT.bat trước." }
+if (-not (Test-Path .env.local)) { Fail "Chưa cài đặt xong. Chạy lại bộ cài HANA MEDIA (hoặc 1-CAI-DAT.bat)." }
+Write-Host "==> Khởi động HANA MEDIA…" -ForegroundColor Green
 docker info *> $null
-if ($LASTEXITCODE -ne 0) { Fail "Docker Desktop chưa chạy. Mở Docker Desktop rồi thử lại." }
+if ($LASTEXITCODE -ne 0) {
+  # Tự mở Docker Desktop và đợi sẵn sàng
+  $DockerExe = Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"
+  if (Test-Path $DockerExe) { Start-Process $DockerExe }
+  Write-Host "    Đang mở Docker Desktop" -NoNewline
+  $deadline = (Get-Date).AddMinutes(5)
+  do { Start-Sleep -Seconds 4; Write-Host "." -NoNewline; docker info *> $null } while ($LASTEXITCODE -ne 0 -and (Get-Date) -lt $deadline)
+  Write-Host ""
+  if ($LASTEXITCODE -ne 0) { Fail "Docker Desktop chưa chạy được. Mở Docker Desktop thủ công, đợi 'Engine running' rồi thử lại." }
+}
 
 Write-Host "==> Bật Supabase cục bộ" -ForegroundColor Green
 npx --yes supabase@2.122.1 start

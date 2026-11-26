@@ -24,7 +24,11 @@ kèm thông báo trong ứng dụng, lịch sử từng bước, trao đổi the
 | Git | bất kỳ | |
 | Microsoft Edge | bản hiện hành | Để cài PWA |
 
-### Cài đặt nhanh (một lệnh)
+### Bộ cài một lần nhấp (người dùng)
+
+Chạy `HanaMedia-Setup-<phiên bản>.exe` (tạo bằng `bash scripts/build-installer.sh`, cần `makensis`). Bộ cài chép ứng dụng vào `C:\HanaMedia` rồi chạy `scripts/setup.ps1`, script này tự cài Node.js, WSL, Docker Desktop nếu thiếu (qua `winget`, xin quyền quản trị), tự chạy tiếp sau khi khởi động lại, rồi cài thư viện, Supabase cục bộ, dữ liệu mẫu, đóng gói và tạo biểu tượng **HANA MEDIA** trên màn hình. Cài đè bản mới giữ nguyên dữ liệu. Xem `HUONG-DAN-CAI-DAT.txt`.
+
+### Cài đặt nhanh (một lệnh, nhà phát triển)
 
 Mở **PowerShell** tại thư mục repository:
 
