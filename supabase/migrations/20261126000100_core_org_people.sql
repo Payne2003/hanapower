@@ -63,7 +63,12 @@ alter table public.departments
 -- ---------------------------------------------------------------------
 -- Vai trò và quyền
 -- ---------------------------------------------------------------------
-create type public.app_role as enum ('system_admin', 'department_manager', 'project_manager', 'employee');
+-- Vai trò của công ty media:
+--   system_admin : quản trị hệ thống (tài khoản, vai trò, nhật ký)
+--   manager      : Leader / quản lý sản xuất (tạo & phân công video, duyệt bản dựng, đăng)
+--   content      : Content (chuẩn bị nguồn thật, video AI, kịch bản/VO, sơ đồ dựng; bàn giao)
+--   editor       : Editor (xác nhận nhận tài nguyên, dựng, nộp duyệt)
+create type public.app_role as enum ('system_admin', 'manager', 'content', 'editor');
 
 create table public.user_roles (
   org_id      uuid not null,
@@ -87,18 +92,19 @@ insert into public.role_permissions (role, permission) values
   -- Quản trị hệ thống
   ('system_admin', 'users.manage'),
   ('system_admin', 'roles.manage'),
-  ('system_admin', 'departments.manage'),
-  ('system_admin', 'projects.create'),
-  ('system_admin', 'projects.view_all'),
-  ('system_admin', 'projects.manage_all'),
   ('system_admin', 'audit.view'),
-  -- Quản lý phòng ban
-  ('department_manager', 'projects.create'),
-  ('department_manager', 'reports.view_department'),
-  -- Quản lý dự án
-  ('project_manager', 'projects.create'),
-  -- Nhân viên
-  ('employee', 'reports.submit');
+  ('system_admin', 'channels.manage'),
+  -- Leader / quản lý sản xuất
+  ('manager', 'videos.create'),
+  ('manager', 'videos.manage_all'),
+  ('manager', 'videos.approve'),
+  ('manager', 'videos.publish'),
+  ('manager', 'channels.manage'),
+  ('manager', 'reports.view_all'),
+  -- Content
+  ('content', 'videos.create'),
+  -- Editor
+  ('editor', 'videos.edit');
 -- Ghi chú: quyền đọc chat riêng KHÔNG nằm trong danh mục này;
 -- nó chỉ đi theo tư cách thành viên hội thoại.
 
@@ -148,16 +154,6 @@ language sql stable security definer set search_path = '' as $$
     join public.profiles p on p.id = r.user_id and p.is_active
     join public.role_permissions rp on rp.role = r.role
     where r.user_id = auth.uid() and rp.permission = p_permission
-  )
-$$;
-
--- Người dùng hiện tại là quản lý phòng ban của nhân viên p_user_id?
-create or replace function app.is_department_manager_of(p_user_id uuid) returns boolean
-language sql stable security definer set search_path = '' as $$
-  select app.has_role('department_manager') and exists (
-    select 1 from public.profiles u
-    join public.departments d on d.id = u.department_id and d.org_id = u.org_id
-    where u.id = p_user_id and d.manager_id = auth.uid()
   )
 $$;
 

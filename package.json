@@ -1,6 +1,6 @@
 {
   "name": "hanapower",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Ứng dụng quản trị công việc nội bộ (giao việc, báo cáo, tiến độ, chat) - Next.js + Supabase",
   "engines": {
@@ -10,14 +10,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run tests/unit",
-    "test:db": "vitest run tests/db",
+    "test:db": "node scripts/migrate.mjs --reset --yes --seed && vitest run tests/db",
     "test:e2e": "playwright test --trace off",
     "db:migrate": "node scripts/migrate.mjs",
     "db:seed": "node scripts/migrate.mjs --seed-only",
-    "db:reset": "node scripts/migrate.mjs --reset --seed"
+    "db:reset": "node scripts/migrate.mjs --reset --seed",
+    "test:all": "npm run test && npm run test:db && npm run test:e2e"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
@@ -28,6 +29,7 @@
     "next": "15.5.29",
     "react": "19.2.9",
     "react-dom": "19.2.9",
+    "server-only": "0.0.1",
     "tailwind-merge": "3.7.1",
     "zod": "4.6.7"
   },

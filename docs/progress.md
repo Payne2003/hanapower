@@ -1,0 +1,106 @@
+# Tiến độ theo giai đoạn
+
+Quy ước: **Đã chạy & kiểm thử** = mã đã triển khai và có kiểm thử tự động đạt trong môi trường hiện tại. **Một phần** = có mã nhưng chưa đủ phạm vi yêu cầu. **Chưa làm** = chưa bắt đầu.
+
+| # | Giai đoạn | Trạng thái |
+|---|---|---|
+| 1 | Nền tảng: Next.js, Supabase, migration, dữ liệu mẫu, script PowerShell | **Đã chạy & kiểm thử** (script `.ps1` chưa chạy trên Windows thật) |
+| 2 | Nhân sự và quyền: vai trò Leader / Content / Editor / Quản trị, RLS | **Đã chạy & kiểm thử**. Chưa có giao diện tạo tài khoản (dùng `bootstrap-org.mjs` + seed) |
+| 3 | Quy trình sản xuất video (thay Google Sheet): Content → bàn giao → Editor → dựng → duyệt → đăng | **Đã chạy & kiểm thử** |
+| 4 | Báo cáo tháng, thông báo trong ứng dụng, bảng & Kanban | **Đã chạy & kiểm thử** (thông báo hiện khi tải trang; đẩy thời gian thực chưa làm) |
+| 5 | Chat thời gian thực | **Chưa làm** (đã có trao đổi theo từng video; Realtime tự lưu trữ đã xác minh hoạt động) |
+| 6 | Hoàn thiện PWA | **Một phần**: manifest, icon, cửa sổ độc lập. Chưa có service worker, trang ngoại tuyến |
+| 7 | Kiểm thử hai máy, chạy thử một phòng ban; cloud / tại văn phòng | **Một phần**: tại văn phòng đã chạy trong Docker (cả không Internet); cloud mới có tài liệu |
+
+---
+
+## Chuyển sang quy trình công ty media (2026-11-26)
+
+Theo "Bảng báo cáo bộ phận content HANA MEDIA", bỏ phần dự án / công việc / báo cáo ngày chung chung, thay bằng quy trình sản xuất video.
+
+### Đã chạy
+
+- **CSDL**: `0100` (vai trò mới: `system_admin`, `manager`, `content`, `editor`) + `0200_media_pipeline`: `channels`, `org_counters`, `videos`, `video_items` (4 hạng mục), `video_events`, `video_comments`, `notifications`; RPC `create_video`, `update_video_info`, `assign_video`, `update_content`, `submit_handover`, `confirm_handover`, `update_edit`, `submit_for_review`, `review_video`, `publish_video`, `set_video_hold`, `add_video_comment`, `upsert_channel`, `mark_notifications_read`.
+- **Giao diện**: Tổng quan (việc cần làm theo vai trò, dây chuyền, chỉ số tháng, quá hạn); Video (bảng giống sheet, lọc tháng/giai đoạn/người, Kanban, tạo video); chi tiết video theo 4 bước + phân công + tạm dừng/hủy + trao đổi + lịch sử; Báo cáo tháng (chỉ số, theo Content, theo Editor, bảng, xuất CSV UTF-8 cùng cột với sheet); Thông báo; Cài đặt → Kênh phát hành.
+- **Dữ liệu mẫu**: 9 video tháng 11 từ sheet (Hiếu, Duy, Hòa, Tiện…), link Drive thay bằng link giả.
+
+### Kết quả kiểm thử
+
+| Bộ | Kết quả | Nội dung chính |
+|---|---|---|
+| `tsc` strict, ESLint | Đạt, 0 cảnh báo | |
+| Unit | **7/7** | Trạng thái Content khớp sheet, điều kiện bàn giao, việc cần làm theo vai trò, quá hạn, tháng, chỉ số tháng, CSV chống chèn công thức |
+| CSDL (Postgres thật) | **17/17** | Cả đội xem bảng, không thấy công ty khác; khóa ngoại chặn gán người/kênh công ty khác; anon và UPDATE trực tiếp bị từ chối; tài khoản khóa mất quyền; Content tự tạo (mã tự tăng), không tạo hộ người khác; Editor không tạo được; Leader phân công đúng vai trò; **tạo đồng thời không trùng mã**; phân công lại có nhật ký; chỉ Content phụ trách sửa Content; **bàn giao chặn khi thiếu hạng mục/link**; không sửa Content sau bàn giao; Editor khác không xác nhận được; yêu cầu bổ sung bắt buộc ghi chú và trả về Content; Editor/Content không tự duyệt; yêu cầu sửa bắt buộc ghi chú; không nhảy bước; tạm dừng/hủy chỉ Leader; thông báo chỉ người nhận thấy; người ngoài không bình luận được; chỉ quản trị đổi vai trò |
+| E2E Playwright | **5/5** | Đăng nhập sai; bảng tháng 11 khớp sheet (D0004: Hiếu → Hòa, Đã nhận đủ, ghi chú Edit); **toàn bộ quy trình** Content tạo → bàn giao bị chặn khi thiếu → bàn giao → Editor yêu cầu bổ sung → Content thấy thông báo, bổ sung → Editor nhận đủ, dựng, nộp duyệt → Leader yêu cầu sửa → Editor nộp lại → Leader duyệt → đăng → báo cáo tháng + tải CSV đúng cột; Editor không thấy nút của video không thuộc mình; điện thoại dạng thẻ, không cuộn ngang |
+
+### Cần làm tiếp / cần môi trường
+
+- Xác nhận các giả định trong README (đặc biệt: Leader là người duyệt và đăng; có cần bước Thumbnail/Tiêu đề SEO riêng không).
+- Nhập dữ liệu thật các tháng còn lại từ Google Sheet (có thể viết công cụ nhập từ tệp Excel).
+- Đẩy thông báo thời gian thực, chat, PWA ngoại tuyến; chạy thử trên Windows/Edge và triển khai thật khi có cấu hình.
+
+---
+
+## (Lưu trữ) Giai đoạn 1–3: Lát cắt đầu tiên dạng quản lý công việc chung (2026-11-26)
+
+> Phần nghiệp vụ dưới đây đã được thay bằng quy trình sản xuất video ở trên; hạ tầng và cấu hình triển khai vẫn giữ nguyên.
+
+### Đã chạy
+
+- **CSDL** (`supabase/migrations`):
+  - `0100` doanh nghiệp, phòng ban, hồ sơ, `user_roles`, `role_permissions`, `audit_logs`, hàm phân quyền ở schema `app`, RPC `get_my_context`, `set_user_roles`, `set_user_active`.
+  - `0200` dự án, thành viên, công việc, `task_events`, `task_comments`, view `project_stats` (tiến độ có trọng số), RPC tạo dự án/giao việc/cập nhật tiến độ/duyệt/trả lại/giao lại/sửa tiến độ/hủy.
+  - `0300` báo cáo ngày (nháp → đã gửi), RPC `save_daily_report_draft`, `submit_daily_report` (một giao dịch, idempotent theo người dùng + ngày, khóa `FOR UPDATE`).
+  - RLS bật trên mọi bảng; client chỉ `SELECT`; khóa ngoại ghép `(org_id, …)`.
+- **Ứng dụng**: đăng nhập; sidebar theo quyền (Tổng quan, Việc của tôi, Dự án, Báo cáo, Trò chuyện, Nhân sự, Cài đặt); Việc của tôi + cập nhật nhanh (một cột trên điện thoại); dự án (tạo, thành viên, giao việc, chỉ số tiến độ/hoàn tất/chờ duyệt/quá hạn/vướng mắc, danh sách/Kanban, duyệt/trả lại); báo cáo ngày (nháp máy chủ + nháp cục bộ, chống nhấn hai lần, trạng thái đang gửi/gửi lỗi/mất mạng, gửi lại an toàn); báo cáo của nhân sự theo phạm vi quản lý; nhân sự (đổi vai trò, khóa tài khoản — có nhật ký); đổi mật khẩu.
+- **Triển khai tại văn phòng** (`deploy/onprem`): compose Postgres + GoTrue + PostgREST + Realtime v2.68 + Storage (file) + Caddy HTTPS; ảnh ứng dụng `Dockerfile` / `Dockerfile.prebuilt`; `gen-onprem-env.mjs`, `bootstrap-org.mjs`.
+
+### Lệnh đã dùng (môi trường kiểm thử Linux; tương đương PowerShell ghi trong README)
+
+```bash
+npm install                                   # khóa phiên bản trong package-lock.json
+node scripts/gen-onprem-env.mjs --domain hanapower.lan
+docker compose -f deploy/onprem/docker-compose.yml -f deploy/onprem/docker-compose.sandbox.yml up -d db auth rest realtime storage gateway
+node scripts/migrate.mjs --reset --yes --seed
+npm run typecheck && npm run lint && npm run test
+npm run test:db
+npm run build && npm run start
+E2E_BASE_URL=http://localhost:3000 E2E_RESET_DB=1 npm run test:e2e
+# Ứng dụng trong container, sau gateway HTTPS:
+BUILD_STANDALONE=1 npm run build
+docker build -f deploy/onprem/Dockerfile.prebuilt -t hanapower-app:local .
+docker compose ... --profile app up -d --no-build
+E2E_BASE_URL=https://localhost:8443 E2E_IGNORE_HTTPS_ERRORS=1 E2E_RESET_DB=1 npm run test:e2e
+# Không có Internet:
+docker compose -f docker-compose.yml -f docker-compose.sandbox.yml -f docker-compose.offline-test.yml --profile check run --rm offline-check
+```
+
+### Kết quả kiểm thử
+
+| Bộ | Kết quả | Nội dung |
+|---|---|---|
+| `tsc --noEmit` (strict) | Đạt | |
+| ESLint (`next/core-web-vitals`, `next/typescript`) | Đạt, 0 cảnh báo | |
+| Unit (Vitest) | **8/8** | Công thức tiến độ, trạng thái 100% → Chờ duyệt, quá hạn theo ngày doanh nghiệp, thông báo lỗi |
+| CSDL (Vitest + Supabase Postgres 15.8 thật) | **22/22** | Tiến độ có trọng số/loại việc hủy/NULL; trọng số > 0; nhân viên không tạo dự án; chỉ QLDA giao việc, chỉ cho thành viên; **đọc chéo dự án bị chặn**; **đọc/ghi chéo doanh nghiệp bị chặn** (cả ở mức khóa ngoại); anon bị từ chối; không UPDATE/INSERT trực tiếp; tài khoản bị khóa mất quyền; người phụ trách không tự duyệt; duyệt → tăng hoàn tất + nhật ký, duyệt lặp không đổi; trả lại cần lý do; giao lại ghi nhật ký; gửi báo cáo cập nhật việc + lịch sử trong một giao dịch; **gửi lại/nhấn hai lần không ghi trùng**; **không báo cáo/sửa báo cáo của người khác**; QLDA chỉ thấy dòng của dự án mình, trưởng phòng thấy cả báo cáo; **hai lần gửi song song từ hai kết nối** chỉ tạo một báo cáo; chỉ quản trị đổi vai trò + nhật ký |
+| E2E Playwright (Next.js production, Chromium) | **4/4** | Đăng nhập sai; luồng đầy đủ QLDA tạo dự án → giao việc → nhân viên gửi báo cáo 100% (nhấn đúp) → QLDA thấy 100%, hoàn tất 0/1, chờ duyệt 1, thấy dòng báo cáo → duyệt → 1/1 → nhân viên dự án khác không mở được; trả lại kèm lý do hiện cho nhân viên; điện thoại 390px một cột, không cuộn ngang |
+| E2E qua gateway HTTPS + ứng dụng trong container | **4/4** | Cùng kịch bản tại `https://localhost:8443` (Caddy `tls internal`) |
+| Kiểm tra ngoại tuyến (mạng Docker `internal`) | **5/5** | Không ra được Internet; đăng nhập GoTrue; RPC + RLS; lưu/tải tệp (backend file); Realtime broadcast qua WebSocket của gateway |
+
+### Vấn đề gặp và cách xử lý
+
+- `loading.tsx` ở nhóm route `(app)` làm server action treo sau `revalidatePath` (Next.js 15.5) → bỏ `loading.tsx`, giữ `error.tsx`.
+- `supabase-js` 2.119 gửi khung broadcast nhị phân mà Realtime v2.34 không đọc được → nâng ảnh Realtime lên v2.68.0.
+- UUID mẫu không đúng biến thể RFC 4122 → dùng `z.guid()` (Postgres vẫn kiểm tra kiểu `uuid`).
+
+### Cần môi trường bổ sung để xác minh
+
+- **Windows thật**: chạy `scripts/setup.ps1`, `db.ps1`, `test.ps1`, `onprem-init.ps1` (chưa chạy được PowerShell trên Windows trong môi trường này); `npx supabase start` với Docker Desktop (môi trường này không kéo được ảnh từ registry mặc định của Supabase CLI, nên đã kiểm thử bằng compose tự lưu trữ với cùng các thành phần).
+- **Edge**: cài PWA, cửa sổ độc lập, tin cậy CA nội bộ qua GPO.
+- **Hai máy / VPN / DNS nội bộ**; **cloud** (Supabase managed + tên miền HTTPS).
+
+## Việc tiếp theo
+
+1. Giai đoạn 4: báo cáo tuần (tổng hợp từ báo cáo ngày, nhận xét, kế hoạch tuần sau, bản chụp khi gửi); thông báo trong ứng dụng (giao việc, chờ duyệt, bị trả lại, sắp tới hạn); bình luận và tệp đính kèm công việc (bucket riêng + chính sách theo bản ghi); giao diện quản trị tài khoản/phòng ban.
+2. Giai đoạn 5: chat 1–1, nhóm, kênh dự án; lưu Postgres trước, Realtime kênh riêng chỉ báo cập nhật; tải bù khi kết nối lại; kiểm thử đọc chat sau khi bị xóa khỏi nhóm.
+3. Giai đoạn 6: service worker, trang ngoại tuyến, kiểm tra cài đặt Edge.

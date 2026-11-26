@@ -13,34 +13,24 @@ for (const f of [".env.local", ".env"]) {
 
 export const DB_URL = process.env.DATABASE_URL ?? "";
 
+export const ORG = "00000000-0000-4000-a000-000000000001";
+export const OTHER_ORG = "00000000-0000-4000-a000-000000000002";
+
 export const U = {
   admin: "00000000-0000-4000-c000-000000000001",
-  deptManager: "00000000-0000-4000-c000-000000000002", // Trần Thị Bình - trưởng phòng Kỹ thuật
-  pm1: "00000000-0000-4000-c000-000000000003", // Lê Minh Châu - QLDA dự án 1, 3
-  emp1: "00000000-0000-4000-c000-000000000004", // Phạm Quốc Dũng - thành viên DA1, DA2
-  emp2: "00000000-0000-4000-c000-000000000005", // Hoàng Thu Hà - thành viên DA1
-  pm2: "00000000-0000-4000-c000-000000000006", // Võ Thanh Hải - QLDA dự án 2
-  emp3: "00000000-0000-4000-c000-000000000007", // Đỗ Khánh Linh - thành viên DA2
+  leader: "00000000-0000-4000-c000-000000000002",
+  hieu: "00000000-0000-4000-c000-000000000003", // Content
+  phong: "00000000-0000-4000-c000-000000000004", // Content
+  duy: "00000000-0000-4000-c000-000000000005", // Editor
+  hoa: "00000000-0000-4000-c000-000000000006", // Editor
+  tien: "00000000-0000-4000-c000-000000000007", // Editor
   outsider: "00000000-0000-4000-c000-000000000099", // doanh nghiệp khác
 } as const;
 
-export const P = {
-  solar: "00000000-0000-4000-d000-000000000001",
-  scada: "00000000-0000-4000-d000-000000000002",
-  empty: "00000000-0000-4000-d000-000000000003",
-  other: "00000000-0000-4000-d000-000000000009",
-} as const;
-
-export const T = {
-  survey: "00000000-0000-4000-e000-000000000001", // done
-  design: "00000000-0000-4000-e000-000000000002", // emp2, 60%, weight 2
-  estimate: "00000000-0000-4000-e000-000000000003", // emp1, 40%, blocked
-  permit: "00000000-0000-4000-e000-000000000004", // emp1, 0%
-  cancelled: "00000000-0000-4000-e000-000000000005",
-  rtu: "00000000-0000-4000-e000-000000000006", // emp3 (DA2)
-  historian: "00000000-0000-4000-e000-000000000007", // emp1 (DA2), weight 3
-  other: "00000000-0000-4000-e000-000000000009",
-} as const;
+/** id video mẫu theo số thứ tự (D0001 → V(1)). */
+export const V = (n: number) => `00000000-0000-4000-9000-${String(n).padStart(12, "0")}`;
+export const OTHER_VIDEO = "00000000-0000-4000-9000-000000000999";
+export const CHANNEL = "00000000-0000-4000-f000-000000000001";
 
 export function newClient() {
   return new pg.Client({ connectionString: DB_URL });

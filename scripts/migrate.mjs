@@ -67,10 +67,8 @@ async function reset() {
       if to_regclass('supabase_migrations.schema_migrations') is not null then
         delete from supabase_migrations.schema_migrations;
       end if;
-      if to_regclass('storage.objects') is not null then
-        delete from storage.objects where bucket_id in ('attachments');
-        delete from storage.buckets where id in ('attachments');
-      end if;
+      -- Không xóa trực tiếp bảng storage: Supabase bản mới chặn việc này (storage.protect_delete).
+      -- Ứng dụng chưa tạo bucket nào nên không cần dọn.
       delete from auth.users where id::text like '00000000-0000-4000-c000-%';
     end $$;`);
 }

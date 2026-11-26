@@ -1,0 +1,38 @@
+# Cập nhật cơ sở dữ liệu trên cloud (Supabase) mỗi khi main có migration mới.
+# Cần secret SUPABASE_DB_URL (Settings → Secrets and variables → Actions):
+#   chuỗi kết nối "Session pooler" của Supabase, dạng
+#   postgresql://postgres.<ref>:<mật-khẩu>@aws-0-<vùng>.pooler.supabase.com:5432/postgres
+# Chỉ áp dụng migration mới; không xóa dữ liệu, không nạp dữ liệu mẫu.
+name: Cập nhật cơ sở dữ liệu cloud
+
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**", "scripts/migrate.mjs"]
+  workflow_dispatch:
+
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Áp dụng migration mới
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          APP_ENV: production
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning::Chưa có secret SUPABASE_DB_URL — bỏ qua (xem docs/deploy-cloud.md)."
+            exit 0
+          fi
+          node scripts/migrate.mjs --status
+          node scripts/migrate.mjs

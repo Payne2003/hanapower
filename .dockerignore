@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.env
+.env.local
+deploy/onprem/.env
+deploy/onprem/volumes
+test-results
+playwright-report
+tests

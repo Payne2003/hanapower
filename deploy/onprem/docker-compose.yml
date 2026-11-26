@@ -92,7 +92,7 @@ services:
 
   realtime:
     <<: *restart
-    image: ${IMAGE_REGISTRY:-}supabase/realtime:v2.34.47
+    image: ${IMAGE_REGISTRY:-}supabase/realtime:v2.68.0
     # Tên tenant mặc định "realtime-dev" được suy ra từ Host header (gateway đặt sẵn).
     depends_on:
       db: { condition: service_healthy }

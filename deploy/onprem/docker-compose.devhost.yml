@@ -1,0 +1,6 @@
+# Phát triển: gateway chuyển "/" tới Next.js chạy trên máy host (npm run dev / npm start, cổng 3000)
+# thay vì container app. Dùng: docker compose -f docker-compose.yml -f docker-compose.devhost.yml up -d gateway
+services:
+  gateway:
+    environment:
+      APP_UPSTREAM: host.docker.internal:3000
