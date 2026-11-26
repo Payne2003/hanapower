@@ -31,6 +31,10 @@ jobs:
           APP_ENV: production
         run: |
           if [ -z "$DATABASE_URL" ]; then
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::error::Chưa có secret SUPABASE_DB_URL. Vào Settings → Secrets and variables → Actions → New repository secret, đặt tên SUPABASE_DB_URL, dán chuỗi kết nối Session pooler của Supabase, rồi chạy lại."
+              exit 1
+            fi
             echo "::warning::Chưa có secret SUPABASE_DB_URL — bỏ qua (xem docs/deploy-cloud.md)."
             exit 0
           fi

@@ -13,6 +13,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import pg from "pg";
+import { describe, pgConfig } from "./db-config.mjs";
 
 for (const f of [".env.local", ".env"]) {
   if (existsSync(f)) {
@@ -30,7 +31,15 @@ if (!url) {
   process.exit(1);
 }
 const dir = resolve("supabase/migrations");
-const client = new pg.Client({ connectionString: url });
+let cfg;
+try {
+  cfg = pgConfig(url);
+} catch (e) {
+  console.error(`LỖI: ${e.message}`);
+  process.exit(1);
+}
+console.log(`Kết nối: ${describe(cfg)}`);
+const client = new pg.Client(cfg);
 
 async function reset() {
   if (!args.has("--yes")) {

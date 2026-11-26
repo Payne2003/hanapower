@@ -17,7 +17,9 @@ export async function isSystemEmpty(): Promise<boolean> {
   try {
     const admin = createSupabaseAdminClient();
     const { count, error } = await admin.from("organizations").select("id", { count: "exact", head: true });
-    return !error && (count ?? 0) === 0;
+    // Chưa có bảng (chưa chạy migration) cũng coi là "trống" để hiện trang khởi tạo kèm hướng dẫn.
+    if (error) return /could not find the table|does not exist|schema cache/i.test(error.message);
+    return (count ?? 0) === 0;
   } catch {
     return false;
   }
@@ -27,7 +29,22 @@ export async function isSystemEmpty(): Promise<boolean> {
  * Khởi tạo lần đầu: tạo doanh nghiệp + tài khoản quản trị đầu tiên.
  * Chỉ chạy được khi CHƯA có doanh nghiệp nào; sau đó trang này tự đóng lại.
  */
+const NOT_MIGRATED =
+  "Cơ sở dữ liệu trên Supabase chưa được tạo bảng. Trên GitHub: thêm secret SUPABASE_DB_URL (Settings → Secrets and variables → Actions), rồi vào tab Actions chạy \"Cập nhật cơ sở dữ liệu cloud\" và đợi dấu ✓ xanh. Sau đó tải lại trang này.";
+
+/** Đã chạy migration lên Supabase chưa? */
+async function isMigrated(): Promise<boolean> {
+  try {
+    const admin = createSupabaseAdminClient();
+    const { error } = await admin.from("organizations").select("id", { count: "exact", head: true });
+    return !(error && /could not find the table|does not exist|schema cache/i.test(error.message));
+  } catch {
+    return true;
+  }
+}
+
 export async function bootstrapAction(_p: ActionResult | null, fd: FormData): Promise<ActionResult> {
+  if (!(await isMigrated())) return { ok: false, error: NOT_MIGRATED };
   const s = schema.safeParse(Object.fromEntries(fd));
   if (!s.success) return { ok: false, error: s.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" };
   if (s.data.password !== s.data.confirm) return { ok: false, error: "Mật khẩu nhập lại không khớp." };
