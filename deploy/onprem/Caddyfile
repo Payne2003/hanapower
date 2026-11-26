@@ -1,0 +1,57 @@
+# Cổng vào duy nhất cho mạng LAN: ứng dụng Next.js + Supabase (Auth, REST, Realtime, Storage)
+# trên CÙNG một địa chỉ HTTPS. Không cần Internet khi chạy.
+{
+	# Không tự xin chứng chỉ từ Internet; dùng CA nội bộ của Caddy hoặc chứng chỉ do doanh nghiệp cấp.
+	auto_https disable_redirects
+	admin off
+}
+
+(supabase_routes) {
+	handle_path /auth/v1/* {
+		reverse_proxy auth:9999
+	}
+	handle_path /rest/v1/* {
+		reverse_proxy rest:3000
+	}
+	handle_path /storage/v1/* {
+		request_body {
+			max_size 60MB
+		}
+		reverse_proxy storage:5000
+	}
+	handle /realtime/v1/* {
+		uri strip_prefix /realtime/v1
+		@api path /api/*
+		handle @api {
+			reverse_proxy realtime:4000 {
+				header_up Host realtime-dev.supabase-realtime
+			}
+		}
+		handle {
+			rewrite * /socket{uri}
+			reverse_proxy realtime:4000 {
+				header_up Host realtime-dev.supabase-realtime
+			}
+		}
+	}
+}
+
+# HTTPS cho người dùng (LAN và VPN). TLS_MODE:
+#   "internal"                 → Caddy tự tạo CA nội bộ (cần cài root CA lên máy Windows, xem docs/deploy-onprem.md)
+#   "/certs/cert.pem /certs/key.pem" → chứng chỉ do doanh nghiệp cấp
+{$APP_DOMAIN:hanapower.lan} {
+	tls {$TLS_MODE:internal}
+	encode gzip
+	import supabase_routes
+	handle {
+		reverse_proxy {$APP_UPSTREAM:app:3000}
+	}
+}
+
+# Cổng HTTP nội bộ (chỉ dành cho máy chủ / kiểm thử, không mở ra LAN).
+:8000 {
+	import supabase_routes
+	handle {
+		reverse_proxy {$APP_UPSTREAM:app:3000}
+	}
+}

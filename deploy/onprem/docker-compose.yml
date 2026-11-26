@@ -1,0 +1,197 @@
+# Cấu hình "Tại văn phòng": Next.js + Supabase tự lưu trữ trên một máy chủ trong LAN.
+# Mọi thành phần chạy nội bộ, không phụ thuộc Internet khi vận hành:
+#   - Đăng nhập: GoTrue (auth) — tắt đăng ký công khai, tắt gửi email.
+#   - Dữ liệu:   PostgreSQL (db) + PostgREST (rest).
+#   - Realtime:  supabase/realtime.
+#   - Lưu tệp:   storage-api, backend "file" ghi vào volume cục bộ.
+#   - HTTPS:     Caddy (gateway), CA nội bộ hoặc chứng chỉ doanh nghiệp.
+# Tạo .env bằng: node scripts/gen-onprem-env.mjs (hoặc scripts/onprem-init.ps1)
+# Ảnh Docker lấy từ Docker Hub; đặt IMAGE_REGISTRY=mirror.gcr.io/ nếu cần dùng mirror.
+
+name: hanapower
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  db:
+    <<: *restart
+    image: ${IMAGE_REGISTRY:-}supabase/postgres:15.8.1.060
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: 5432
+      POSTGRES_PORT: 5432
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: postgres
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXP:-3600}
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
+    volumes:
+      - ./db-init/99-realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
+      - ./db-init/99-roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
+      - ./db-init/99-jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+      - db-data:/var/lib/postgresql/data
+    ports:
+      # Chỉ mở cho máy chủ (chạy migration/sao lưu). Không mở ra LAN.
+      - "127.0.0.1:${DB_HOST_PORT:-54322}:5432"
+
+  auth:
+    <<: *restart
+    image: ${IMAGE_REGISTRY:-}supabase/gotrue:v2.180.0
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${PUBLIC_URL}/auth/v1
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      GOTRUE_SITE_URL: ${PUBLIC_URL}
+      GOTRUE_URI_ALLOW_LIST: ${PUBLIC_URL}
+      # Ứng dụng nội bộ: chỉ quản trị viên tạo tài khoản.
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXP:-3600}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      # Không phụ thuộc máy chủ email Internet: tài khoản do quản trị viên xác nhận sẵn.
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_SMS_AUTOCONFIRM: "false"
+      GOTRUE_PASSWORD_MIN_LENGTH: "8"
+
+  rest:
+    <<: *restart
+    image: ${IMAGE_REGISTRY:-}postgrest/postgrest:v12.2.12
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXP:-3600}
+    command: ["postgrest"]
+
+  realtime:
+    <<: *restart
+    image: ${IMAGE_REGISTRY:-}supabase/realtime:v2.34.47
+    # Tên tenant mặc định "realtime-dev" được suy ra từ Host header (gateway đặt sẵn).
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-sSfL", "--head", "-o", "/dev/null", "-H", "Authorization: Bearer ${ANON_KEY}",
+             "http://localhost:4000/api/tenants/realtime-dev/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      PORT: 4000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: ${JWT_SECRET}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+
+  storage:
+    <<: *restart
+    image: ${IMAGE_REGISTRY:-}supabase/storage-api:v1.25.7
+    depends_on:
+      db: { condition: service_healthy }
+      rest: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://storage:5000/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      FILE_SIZE_LIMIT: 52428800
+      # Lưu tệp trên ổ đĩa máy chủ (volume storage-data) — không cần S3/Internet.
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      - storage-data:/var/lib/storage:z
+
+  app:
+    <<: *restart
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: hanapower-app:local
+    depends_on:
+      auth: { condition: service_healthy }
+    environment:
+      # Trình duyệt dùng cùng địa chỉ HTTPS với ứng dụng (gateway định tuyến /auth, /rest, /realtime, /storage).
+      SUPABASE_PUBLIC_URL: ${PUBLIC_URL}
+      # Máy chủ Next.js gọi Supabase qua mạng nội bộ Docker, không ra Internet.
+      SUPABASE_INTERNAL_URL: http://gateway:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      DEPLOYMENT_MODE: onprem
+
+  gateway:
+    <<: *restart
+    image: ${IMAGE_REGISTRY:-}caddy:2.10.0
+    depends_on:
+      - auth
+      - rest
+      - realtime
+      - storage
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      TLS_MODE: ${TLS_MODE:-internal}
+      APP_UPSTREAM: ${APP_UPSTREAM:-app:3000}
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+      - "127.0.0.1:${GATEWAY_HTTP_PORT:-8000}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  storage-data:
+  caddy-data:
+  caddy-config:

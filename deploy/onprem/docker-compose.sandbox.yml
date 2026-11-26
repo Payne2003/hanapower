@@ -1,0 +1,12 @@
+# CHỈ dùng trong môi trường kiểm thử không hỗ trợ IPv6 (container CI/sandbox).
+# Máy chủ Windows/Linux thông thường KHÔNG cần tệp này.
+#   docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
+services:
+  realtime:
+    environment:
+      DB_IP_VERSION: ipv4
+    volumes:
+      - ./sandbox/realtime-runtime-ipv4.exs:/app/releases/2.34.47/runtime.exs:ro
+  gateway:
+    environment:
+      APP_UPSTREAM: host.docker.internal:3000
