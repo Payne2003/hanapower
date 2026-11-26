@@ -4,6 +4,7 @@
 // Cần: DATABASE_URL, SUPABASE_PUBLIC_URL (hoặc SUPABASE_INTERNAL_URL), SUPABASE_SERVICE_ROLE_KEY (đọc từ môi trường hoặc .env.local).
 import { existsSync, readFileSync } from "node:fs";
 import pg from "pg";
+import { pgConfig } from "./db-config.mjs";
 
 for (const f of [".env.local", ".env"]) {
   if (!existsSync(f)) continue;
@@ -36,7 +37,7 @@ const body = await res.json();
 if (!res.ok) { console.error("Không tạo được tài khoản Auth:", body.msg ?? body.message ?? body); process.exit(1); }
 const userId = body.id;
 
-const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+const client = new pg.Client(pgConfig(process.env.DATABASE_URL));
 await client.connect();
 try {
   await client.query("begin");
