@@ -13,10 +13,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <main className="grid min-h-dvh place-items-center bg-muted px-4">
       <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-lg bg-primary font-bold text-primary-foreground" aria-hidden>HM</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/icon.svg" alt="" width={48} height={48} className="size-12" />
           <div>
-            <h1 className="text-lg font-semibold">Đăng nhập</h1>
-            <p className="text-sm text-muted-foreground">Quản lý sản xuất video nội bộ</p>
+            <h1 className="text-lg font-semibold">HANA Studio</h1>
+            <p className="text-sm text-muted-foreground">Quản lý sản xuất video · HANA MEDIA</p>
           </div>
         </div>
         {loi === "khong-hoat-dong" ? (

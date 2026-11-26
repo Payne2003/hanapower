@@ -125,7 +125,7 @@ function Request-Reboot($why) {
 }
 
 Say "==========================================" Cyan
-Say "  CÀI ĐẶT HANA MEDIA – QUẢN LÝ SẢN XUẤT VIDEO" Cyan
+Say "  CÀI ĐẶT HANA STUDIO – QUẢN LÝ SẢN XUẤT VIDEO" Cyan
 Say "==========================================" Cyan
 if ($Resume) { Info "Tiếp tục cài đặt sau khi khởi động lại…" }
 
@@ -230,19 +230,21 @@ if ($LASTEXITCODE -ne 0) { Fail "Đóng gói lỗi (xem thông báo phía trên)
 Set-Content -Path (Join-Path $Root ".next\.hana-source") -Value (node scripts/fingerprint.mjs) -NoNewline
 
 # ---------------------------------------------------------------- 7. Biểu tượng
-Step "Tạo biểu tượng HANA MEDIA trên màn hình và menu Start"
+Step "Tạo biểu tượng HANA Studio trên màn hình và menu Start"
 $shell = New-Object -ComObject WScript.Shell
 $links = @(
-  (Join-Path ([Environment]::GetFolderPath("Desktop")) "HANA MEDIA.lnk"),
-  (Join-Path ([Environment]::GetFolderPath("Programs")) "HANA MEDIA.lnk")
+  (Join-Path ([Environment]::GetFolderPath("Desktop")) "HANA Studio.lnk"),
+  (Join-Path ([Environment]::GetFolderPath("Programs")) "HANA Studio.lnk")
 )
+# Xóa lối tắt tên cũ
+foreach ($old in @("Desktop", "Programs")) { Remove-Item (Join-Path ([Environment]::GetFolderPath($old)) "HANA MEDIA.lnk") -ErrorAction SilentlyContinue }
 foreach ($l in $links) {
   $s = $shell.CreateShortcut($l)
   $s.TargetPath = $PS64
   $s.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$Root\scripts\start.ps1`""
   $s.WorkingDirectory = $Root
   $s.IconLocation = "$Root\public\icons\app.ico"
-  $s.Description = "HANA MEDIA – Quản lý sản xuất video"
+  $s.Description = "HANA Studio – Quản lý sản xuất video"
   $s.Save()
 }
 
@@ -251,7 +253,7 @@ Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOn
 
 Say "`n==========================================" Cyan
 Say "  CÀI ĐẶT XONG" Cyan
-Say "  Từ nay nhấp đúp biểu tượng 'HANA MEDIA' trên màn hình để mở." Cyan
+Say "  Từ nay nhấp đúp biểu tượng 'HANA Studio' trên màn hình để mở." Cyan
 Say "  Tài khoản thử: leader@hanamedia.local / hieu@hanamedia.local / duy@hanamedia.local" Cyan
 Say "  Mật khẩu: MatKhau@123" Cyan
 Say "==========================================" Cyan

@@ -86,7 +86,9 @@ export function AppNav({ items, orgName, userName, roleLabel, logoutAction }: {
         >
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
-        <span className="truncate font-semibold">{orgName}</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icons/icon.svg" alt="" width={28} height={28} className="size-7" />
+        <span className="truncate font-semibold">HANA Studio</span>
       </header>
       {open ? (
         <div id="mobile-nav" className="fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col gap-3 overflow-y-auto bg-card p-4 md:hidden">
@@ -98,10 +100,12 @@ export function AppNav({ items, orgName, userName, roleLabel, logoutAction }: {
       {/* Sidebar cho máy tính */}
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-4 border-r bg-card p-4 md:flex">
         <div className="flex items-center gap-2 px-1">
-          <div className="grid size-8 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground" aria-hidden>
-            HM
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/icon.svg" alt="" width={32} height={32} className="size-8 shrink-0" />
+          <div className="min-w-0 leading-tight">
+            <p className="text-sm font-semibold">HANA Studio</p>
+            <p className="truncate text-xs text-muted-foreground" title={orgName}>{orgName}</p>
           </div>
-          <span className="truncate text-sm font-semibold" title={orgName}>{orgName}</span>
         </div>
         {nav}
         {footer}
