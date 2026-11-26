@@ -15,3 +15,4 @@ deploy/onprem/certs/
 supabase/.temp/
 supabase/.branches/
 dist/
+cai-dat.log

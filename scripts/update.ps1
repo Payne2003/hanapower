@@ -3,6 +3,7 @@
   Lấy phiên bản mới của ứng dụng. Dữ liệu đã nhập được giữ nguyên.
 #>
 $ErrorActionPreference = "Stop"
+try { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $OutputEncoding = [Text.Encoding]::UTF8; chcp.com 65001 > $null } catch { }
 Set-Location (Split-Path $PSScriptRoot -Parent)
 $branch = "claude/internal-task-management-app-mau8my"
 

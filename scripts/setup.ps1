@@ -15,17 +15,24 @@ param(
   [switch]$Elevated
 )
 $ErrorActionPreference = "Stop"
+# Hiển thị đúng tiếng Việt trong cửa sổ PowerShell (mặc định Windows dùng bảng mã cũ)
+try { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $OutputEncoding = [Text.Encoding]::UTF8; chcp.com 65001 > $null } catch { }
+$ProgressPreference = "SilentlyContinue"   # tải tệp nhanh hơn nhiều trên PowerShell 5.1
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $Root = Split-Path $PSScriptRoot -Parent
 Set-Location $Root
 $SupabaseCli = "supabase@2.122.1"
 $DockerExe = Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"
 $Marker = Join-Path $Root ".hana-installed"
+$LogFile = Join-Path $Root "cai-dat.log"
+try { Start-Transcript -Path $LogFile -Append | Out-Null } catch { }
+$Arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -or $env:PROCESSOR_ARCHITEW6432 -eq "ARM64") { "arm64" } else { "x64" }
 
 function Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Green }
 function Info($msg) { Write-Host "    $msg" -ForegroundColor Gray }
 function Fail($msg) {
   Write-Host "`n[LỖI] $msg" -ForegroundColor Red
-  Write-Host "Chụp màn hình cửa sổ này gửi bộ phận kỹ thuật nếu cần hỗ trợ." -ForegroundColor Yellow
+  Write-Host "Chụp màn hình cửa sổ này (hoặc gửi tệp $LogFile) cho bộ phận kỹ thuật nếu cần hỗ trợ." -ForegroundColor Yellow
   Read-Host "Nhấn Enter để đóng"
   exit 1
 }
@@ -36,7 +43,51 @@ function Test-Admin {
 function Update-PathFromRegistry {
   $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
 }
+function Test-Native([scriptblock]$Command) {
+  # Chạy lệnh ngoài, chỉ quan tâm mã thoát; không để thông báo lỗi (stderr) làm dừng script trên PowerShell 5.1.
+  $old = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try { & $Command *> $null; return ($LASTEXITCODE -eq 0) } catch { return $false } finally { $ErrorActionPreference = $old }
+}
 function Has($cmd) { [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
+function Get-File($url, $dest) {
+  Info "Đang tải $url"
+  Info "(có thể mất vài phút tùy tốc độ mạng)"
+  try { Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing }
+  catch { Fail "Không tải được tệp cài đặt: $($_.Exception.Message). Kiểm tra kết nối Internet rồi chạy lại." }
+}
+function Find-Node {
+  foreach ($p in @("$env:ProgramFiles\nodejs", "${env:ProgramFiles(x86)}\nodejs")) {
+    if (Test-Path "$p\node.exe") { if ($env:Path -notlike "*$p*") { $env:Path = "$p;$env:Path" }; return $true }
+  }
+  return (Has node)
+}
+function Install-Node {
+  Step "Cài Node.js 22 LTS (tải từ nodejs.org)"
+  try {
+    $index = Invoke-RestMethod -Uri "https://nodejs.org/dist/index.json" -UseBasicParsing
+    $rel = $index | Where-Object { $_.version -like "v22.*" -and $_.lts } | Select-Object -First 1
+    $ver = $rel.version
+  } catch { $ver = "v22.12.0" }
+  $msi = Join-Path $env:TEMP "node-$ver-$Arch.msi"
+  Get-File "https://nodejs.org/dist/$ver/node-$ver-$Arch.msi" $msi
+  Info "Đang cài Node.js $ver…"
+  $p = Start-Process msiexec.exe -ArgumentList @("/i", "`"$msi`"", "/qn", "/norestart") -Wait -PassThru
+  if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { Fail "Trình cài Node.js báo lỗi (mã $($p.ExitCode))." }
+  Update-PathFromRegistry
+  if (-not (Find-Node)) { Fail "Đã chạy trình cài nhưng chưa thấy Node.js." }
+  Info "Đã cài Node.js $(node --version)"
+}
+function Install-Docker {
+  Step "Cài Docker Desktop (tải khoảng 500 MB từ docker.com)"
+  $exe = Join-Path $env:TEMP "DockerDesktopInstaller.exe"
+  Get-File "https://desktop.docker.com/win/main/$Arch/Docker%20Desktop%20Installer.exe" $exe
+  Info "Đang cài Docker Desktop (5–10 phút, cửa sổ có thể đứng yên — vui lòng chờ)…"
+  $p = Start-Process $exe -ArgumentList @("install", "--quiet", "--accept-license") -Wait -PassThru
+  if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { Fail "Trình cài Docker Desktop báo lỗi (mã $($p.ExitCode))." }
+  if (-not (Test-Path $DockerExe)) { Fail "Đã chạy trình cài nhưng chưa thấy Docker Desktop." }
+  Info "Đã cài Docker Desktop"
+}
 function Register-Resume {
   $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Resume"
   New-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Force | Out-Null
@@ -58,10 +109,11 @@ if ($Resume) { Info "Tiếp tục cài đặt sau khi khởi động lại…" }
 
 # ---------------------------------------------------------------- 1. Phần mềm nền
 Update-PathFromRegistry
-$needNode = -not (Has node)
+$needNode = -not (Find-Node)
 $needDocker = (-not (Has docker)) -and (-not (Test-Path $DockerExe))
 $needWsl = $false
-try { wsl.exe --status *> $null; if ($LASTEXITCODE -ne 0) { $needWsl = $true } } catch { $needWsl = $true }
+$needWsl = -not (Test-Native { wsl.exe --status })
+Info "Máy: $Arch · Node.js: $(if ($needNode) {'chưa có'} else {'đã có'}) · Docker: $(if ($needDocker) {'chưa có'} else {'đã có'}) · WSL: $(if ($needWsl) {'chưa bật'} else {'đã bật'})"
 
 if ($needNode -or $needDocker -or $needWsl) {
   if (-not (Test-Admin)) {
@@ -69,30 +121,18 @@ if ($needNode -or $needDocker -or $needWsl) {
     $elevArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"", "-Elevated")
     if ($ResetData) { $elevArgs += "-ResetData" }
     if ($Resume) { $elevArgs += "-Resume" }
+    try { Stop-Transcript | Out-Null } catch { }
     try {
       $p = Start-Process powershell.exe -Verb RunAs -ArgumentList $elevArgs -Wait -PassThru
     } catch { Fail "Không có quyền quản trị. Chạy lại và chọn 'Yes' khi Windows hỏi." }
     exit $p.ExitCode
   }
-  if (-not (Has winget)) {
-    Fail "Máy chưa có 'App Installer' (winget). Cài từ Microsoft Store (tìm 'App Installer') rồi chạy lại."
-  }
-  $wg = @("--accept-package-agreements", "--accept-source-agreements", "--silent", "-e")
-
-  if ($needNode) {
-    Step "Cài Node.js 22 LTS"
-    winget install --id OpenJS.NodeJS.LTS @wg
-    Update-PathFromRegistry
-    if (-not (Has node)) { Fail "Cài Node.js chưa thành công." }
-  }
-  if ($needDocker) {
-    Step "Cài Docker Desktop (có thể mất vài phút)"
-    winget install --id Docker.DockerDesktop @wg --override "install --quiet --accept-license"
-    if (-not (Test-Path $DockerExe)) { Fail "Cài Docker Desktop chưa thành công." }
-  }
+  if ($needNode) { Install-Node }
+  if ($needDocker) { Install-Docker }
   if ($needWsl) {
     Step "Bật WSL (nền tảng cho Docker Desktop)"
     wsl.exe --install --no-distribution
+    Info "Mã kết quả WSL: $LASTEXITCODE"
   }
   if ($needDocker -or $needWsl) {
     # WSL và nhóm docker-users chỉ có hiệu lực sau khi khởi động lại / đăng nhập lại.
@@ -101,23 +141,22 @@ if ($needNode -or $needDocker -or $needWsl) {
 }
 
 Update-PathFromRegistry
-if (-not (Has node)) { Fail "Không tìm thấy Node.js." }
+if (-not (Find-Node)) { Fail "Không tìm thấy Node.js." }
 Info "Node.js $(node --version)"
 
 # ---------------------------------------------------------------- 2. Docker chạy
 Step "Khởi động Docker Desktop"
-docker info *> $null
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-Native { docker info })) {
   if (Test-Path $DockerExe) { Start-Process $DockerExe }
   $deadline = (Get-Date).AddMinutes(6)
   do {
     Start-Sleep -Seconds 5
     Write-Host "." -NoNewline
     Update-PathFromRegistry
-    docker info *> $null
-  } while ($LASTEXITCODE -ne 0 -and (Get-Date) -lt $deadline)
+    $ok = Test-Native { docker info }
+  } while (-not $ok -and (Get-Date) -lt $deadline)
   Write-Host ""
-  if ($LASTEXITCODE -ne 0) {
+  if (-not $ok) {
     Fail "Docker Desktop chưa sẵn sàng. Mở Docker Desktop, chấp nhận điều khoản nếu được hỏi, đợi 'Engine running' rồi chạy lại."
   }
 }
