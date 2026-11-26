@@ -7,12 +7,12 @@ import { signOut } from "../dang-nhap/actions";
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const ctx = await requireContext();
   const supabase = await createSupabaseServerClient();
-  const { count: unread } = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .is("read_at", null);
+  // Chạy song song: ngữ cảnh người dùng và số thông báo chưa đọc
+  const [ctx, { count: unread }] = await Promise.all([
+    requireContext(),
+    supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null),
+  ]);
 
   const items: NavItem[] = [
     { href: "/", label: "Tổng quan", icon: "dashboard" },

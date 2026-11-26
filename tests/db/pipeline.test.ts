@@ -293,3 +293,30 @@ describe("Thông báo, bình luận, vai trò", () => {
     });
   });
 });
+
+describe("Nhập dữ liệu từ bảng báo cáo cũ", () => {
+  const row = (code: string, extra: Record<string, unknown> = {}) => ({
+    code, title: `Video nhập ${code}`, report_date: "2026-10-05", stage: "editing", content_owner_id: U.hieu, editor_id: U.duy,
+    resource_url: "https://drive.google.com/x", content_note: null, handover_status: "received", handover_confirmed_at: "2026-10-06",
+    editor_note: "ghi chú", supplement_count: 0, items: { real_footage: "done", ai_video: "done", script_vo: "done", edit_map: "done" },
+    source: "t10, dòng 5", ...extra,
+  });
+  it("chỉ Leader nhập được; bỏ qua mã đã có; bộ đếm mã tăng theo mã lớn nhất", async () => {
+    await scenario(async (q, as) => {
+      await as(U.hieu);
+      await expectError(q("select import_videos($1::jsonb)", [JSON.stringify([row("D0200")])]), "42501");
+      await as(U.leader);
+      const r = (await q("select import_videos($1::jsonb) as r", [JSON.stringify([row("D0200"), row("D0001"), row("D0150", { stage: "preparing", handover_status: null, editor_id: null })])]))[0]?.r as { inserted: number; skipped: string[] };
+      expect(r).toEqual({ inserted: 2, skipped: ["D0001"] });
+      const v = (await q("select stage, handover_status, content_owner_id, report_date::text as d from videos where code = 'D0200'"))[0];
+      expect(v).toEqual({ stage: "editing", handover_status: "received", content_owner_id: U.hieu, d: "2026-10-05" });
+      expect((await q("select count(*)::int as n from video_items i join videos v on v.id = i.video_id where v.code = 'D0200' and i.status = 'done'"))[0]?.n).toBe(4);
+      const created = (await q("select create_video('Video sau khi nhập') as r"))[0]?.r as { code: string };
+      expect(created.code).toBe("D0201");
+      // Nhập lại cùng dữ liệu: không tạo trùng
+      const again = (await q("select import_videos($1::jsonb) as r", [JSON.stringify([row("D0200")])]))[0]?.r as { inserted: number };
+      expect(again.inserted).toBe(0);
+      await expectError(q("select import_videos($1::jsonb)", [JSON.stringify([row("D0300", { editor_id: U.hieu })])]), "vai trò Editor");
+    });
+  });
+});

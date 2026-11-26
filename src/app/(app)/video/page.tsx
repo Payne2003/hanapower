@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { Clapperboard } from "lucide-react";
+import Link from "next/link";
+import { Clapperboard, FileSpreadsheet } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { requireContext, can } from "@/lib/auth";
 import { getChannels, getPeople, getVideos } from "@/lib/queries";
 import { monthRange, shiftMonth } from "@/lib/pipeline";
@@ -18,13 +20,18 @@ type SP = { thang?: string; giai_doan?: string; nguoi?: string; xem?: string };
 
 export default async function VideosPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
+  const peopleP = getPeople();
+  const channelsP = getChannels();
+  // Tránh lỗi 'unhandled rejection' nếu trang chuyển hướng trước khi dùng tới (vẫn ném lỗi khi await).
+  peopleP.catch(() => undefined);
+  channelsP.catch(() => undefined);
   const ctx = await requireContext();
   const all = sp.thang === "tat-ca";
   const month = !all && sp.thang && /^\d{4}-\d{2}$/.test(sp.thang) ? sp.thang : ctx.today.slice(0, 7);
   const range = all ? {} : monthRange(month);
   const person = sp.nguoi === "toi" ? ctx.user_id : sp.nguoi;
   const stage = sp.giai_doan && sp.giai_doan in STAGE ? (sp.giai_doan as VideoStage) : undefined;
-  const [videos, people, channels] = await Promise.all([getVideos({ ...range, stage, person }), getPeople(), getChannels()]);
+  const [videos, people, channels] = await Promise.all([getVideos({ ...range, stage, person }), peopleP, channelsP]);
   const names = new Map(people.map((p) => [p.id, p.full_name]));
   const kanban = sp.xem === "kanban";
   const isManager = can(ctx, "videos.manage_all");
@@ -37,7 +44,14 @@ export default async function VideosPage({ searchParams }: { searchParams: Promi
       <PageHeader
         title="Video"
         description={`${videos.length} video${all ? "" : ` · tháng ${month.slice(5)}/${month.slice(0, 4)}`} — mỗi video một dòng, như bảng báo cáo & bàn giao Content.`}
-        actions={<ViewSwitch kanban={kanban} />}
+        actions={
+          <>
+            {isManager ? (
+              <Link href="/video/nhap" className={buttonVariants({ variant: "outline" })}><FileSpreadsheet aria-hidden />Nhập từ Excel</Link>
+            ) : null}
+            <ViewSwitch kanban={kanban} />
+          </>
+        }
       />
 
       {can(ctx, "videos.create") ? (

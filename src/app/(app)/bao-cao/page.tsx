@@ -16,9 +16,12 @@ export const metadata: Metadata = { title: "Báo cáo tháng" };
 
 export default async function ReportPage({ searchParams }: { searchParams: Promise<{ thang?: string }> }) {
   const { thang } = await searchParams;
+  const peopleP = getPeople();
+  // Tránh lỗi 'unhandled rejection' nếu trang chuyển hướng trước khi dùng tới (vẫn ném lỗi khi await).
+  peopleP.catch(() => undefined);
   const ctx = await requireContext();
   const month = thang && /^\d{4}-\d{2}$/.test(thang) ? thang : ctx.today.slice(0, 7);
-  const [videos, people] = await Promise.all([getVideos(monthRange(month)), getPeople()]);
+  const [videos, people] = await Promise.all([getVideos(monthRange(month)), peopleP]);
   const names = new Map(people.map((p) => [p.id, p.full_name]));
   const kpi = monthlyKpi(videos, ctx.today);
   const label = `${month.slice(5)}/${month.slice(0, 4)}`;

@@ -19,8 +19,7 @@ export const metadata: Metadata = { title: "Chi tiết video" };
 export default async function VideoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const ctx = await requireContext();
-  const [data, people, channels] = await Promise.all([getVideo(id), getPeople(), getChannels()]);
+  const [ctx, data, people, channels] = await Promise.all([requireContext(), getVideo(id), getPeople(), getChannels()]);
   if (!data) notFound();
   const { video: v, events, comments } = data;
   const names = new Map(people.map((p) => [p.id, p.full_name]));

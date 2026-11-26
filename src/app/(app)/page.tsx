@@ -16,9 +16,15 @@ function greeting() {
 }
 
 export default async function DashboardPage() {
+  // Bắt đầu tải song song những gì không phụ thuộc người dùng
+  const openP = getOpenVideos();
+  const peopleP = getPeople();
+  // Tránh lỗi 'unhandled rejection' nếu trang chuyển hướng trước khi dùng tới (vẫn ném lỗi khi await).
+  openP.catch(() => undefined);
+  peopleP.catch(() => undefined);
   const ctx = await requireContext();
   const month = ctx.today.slice(0, 7);
-  const [open, monthVideos, people] = await Promise.all([getOpenVideos(), getVideos(monthRange(month)), getPeople()]);
+  const [open, monthVideos, people] = await Promise.all([openP, getVideos(monthRange(month)), peopleP]);
   const names = new Map(people.map((p) => [p.id, p.full_name]));
   const todo = open
     .map((v) => ({ v, action: myAction(v, ctx.user_id, ctx.roles) }))

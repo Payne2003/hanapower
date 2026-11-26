@@ -52,6 +52,7 @@ export const ROLE_LABEL: Record<AppRole, string> = {
 
 export const EVENT_LABEL: Record<string, string> = {
   created: "Tạo video",
+  imported: "Nhập từ bảng báo cáo cũ",
   edit_info: "Sửa thông tin",
   assign: "Phân công",
   content_update: "Cập nhật Content",
