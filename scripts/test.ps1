@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Chạy kiểm thử: unit | db | e2e | all
 .DESCRIPTION

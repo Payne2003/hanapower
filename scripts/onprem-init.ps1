@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Chuẩn bị máy chủ "Tại văn phòng" (Windows Server/Windows 11 + Docker Desktop, hoặc Linux + Docker).
 .EXAMPLE

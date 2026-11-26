@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Thao tác CSDL: migrate | seed | reset | status
 .EXAMPLE

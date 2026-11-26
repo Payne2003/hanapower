@@ -1,0 +1,34 @@
+﻿HANA MEDIA – QUẢN LÝ SẢN XUẤT VIDEO
+Hướng dẫn chạy thử trên một máy Windows
+==========================================
+
+BƯỚC 0 – Cài 2 phần mềm (chỉ một lần)
+  1. Node.js 22 LTS:   https://nodejs.org   (chọn bản "LTS")
+  2. Docker Desktop:   https://www.docker.com/products/docker-desktop
+     Cài xong, MỞ Docker Desktop và đợi đến khi hiện "Engine running".
+  (Docker Desktop có thể yêu cầu khởi động lại máy và bật WSL lần đầu.)
+
+BƯỚC 1 – Cài ứng dụng (chỉ một lần, khoảng 10–20 phút do tải dữ liệu)
+  Giải nén file zip vào một thư mục, ví dụ C:\HanaMedia
+  Nhấp đúp:  1-CAI-DAT.bat
+
+BƯỚC 2 – Mở ứng dụng (mỗi lần dùng)
+  Mở Docker Desktop trước, rồi nhấp đúp:  2-MO-UNG-DUNG.bat
+  Trình duyệt tự mở http://localhost:3000
+  Giữ cửa sổ đen mở trong lúc dùng; đóng cửa sổ = tắt ứng dụng.
+
+TÀI KHOẢN THỬ (mật khẩu chung: MatKhau@123)
+  leader@hanamedia.local   – Leader: tạo/phân công video, duyệt, đăng
+  hieu@hanamedia.local     – Content
+  phong@hanamedia.local    – Content
+  duy@hanamedia.local      – Editor
+  hoa@hanamedia.local      – Editor
+  tien@hanamedia.local     – Editor
+  admin@hanamedia.local    – Quản trị hệ thống
+  Mẹo: mở thêm cửa sổ InPrivate (Ctrl+Shift+N trong Edge) để đăng nhập 2 người cùng lúc.
+
+LƯU Ý
+  - Bản này chạy trên MỘT máy để thử. Để cả đội dùng chung (văn phòng + ở xa)
+    cần đưa lên máy chủ hoặc cloud – xem docs/deploy-onprem.md và docs/deploy-cloud.md.
+  - Chạy lại 1-CAI-DAT.bat sẽ XÓA dữ liệu đã nhập và nạp lại dữ liệu mẫu.
+  - Gặp lỗi: chụp màn hình cửa sổ đen gửi lại để được hỗ trợ.
