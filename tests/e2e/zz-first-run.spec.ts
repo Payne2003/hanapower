@@ -33,7 +33,7 @@ test("khởi tạo lần đầu, tạo tài khoản nhân viên, đặt lại m�
 
   // Tạo tài khoản nhân viên
   await page.getByRole("link", { name: "Nhân sự" }).click();
-  await page.getByText("+ Tạo tài khoản nhân viên").click();
+  await page.getByText("Tạo tài khoản nhân viên").click();
   await page.getByLabel("Họ tên").fill("Nhân Viên Mới");
   await page.getByLabel("Email đăng nhập").fill("nhanvien.moi@vidu.vn");
   await page.getByLabel("Mật khẩu ban đầu").fill("BanDau123");
@@ -53,6 +53,6 @@ test("khởi tạo lần đầu, tạo tài khoản nhân viên, đặt lại m�
   await other.getByRole("button", { name: "Đăng nhập" }).click();
   await expect(other.getByRole("heading", { name: "Xin chào, Nhân Viên Mới" })).toBeVisible();
   await other.getByRole("link", { name: "Video", exact: true }).click();
-  await expect(other.getByText("+ Tạo video mới")).toBeVisible();
+  await expect(other.getByText("Tạo video mới")).toBeVisible();
   await expect(other.getByRole("link", { name: "Nhân sự" })).toHaveCount(0);
 });

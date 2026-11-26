@@ -28,9 +28,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const roleLabel = ctx.roles.map((r) => ROLE_LABEL[r]).join(", ");
 
   return (
-    <div className="flex min-h-dvh flex-col md:flex-row">
+    <div className="flex min-h-dvh flex-col lg:flex-row">
       <AppNav items={items} orgName={ctx.org_name} userName={ctx.full_name} roleLabel={roleLabel} logoutAction={signOut} />
-      <main id="noi-dung" className="min-w-0 flex-1 px-4 py-5 md:px-8 md:py-6">{children}</main>
+      <main id="noi-dung" className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">{children}</main>
     </div>
   );
 }
