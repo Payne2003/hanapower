@@ -16,19 +16,29 @@ $ProgramFiles64 = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:Progr
 
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $OutputEncoding = [Text.Encoding]::UTF8; chcp.com 65001 > $null } catch { }
 Set-Location (Split-Path $PSScriptRoot -Parent)
+function ConvertTo-Plain([string]$s) {
+  # Bỏ dấu tiếng Việt khi in ra cửa sổ: phông mặc định của cửa sổ lệnh Windows thiếu nhiều chữ có dấu (hiện ô vuông).
+  $n = $s.Replace("đ", "d").Replace("Đ", "D").Normalize([Text.NormalizationForm]::FormD)
+  $sb = New-Object Text.StringBuilder
+  foreach ($ch in $n.ToCharArray()) {
+    if ([Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne [Globalization.UnicodeCategory]::NonSpacingMark) { [void]$sb.Append($ch) }
+  }
+  $sb.ToString().Normalize([Text.NormalizationForm]::FormC).Replace("–", "-").Replace("—", "-").Replace("…", "...").Replace("·", "|")
+}
+function Say([string]$msg, [string]$color = "Gray") { Write-Host (ConvertTo-Plain $msg) -ForegroundColor $color }
 $branch = "claude/internal-task-management-app-mau8my"
 
 if ((Test-Path .git) -and (Get-Command git -ErrorAction SilentlyContinue)) {
-  Write-Host "==> Tải bản mới từ GitHub" -ForegroundColor Green
+  Say "==> Tải bản mới từ GitHub" Green
   git pull --ff-only origin $branch
-  if ($LASTEXITCODE -ne 0) { Write-Host "[LỖI] Không tải được bản mới (xem thông báo phía trên)." -ForegroundColor Red; Read-Host "Nhấn Enter để đóng"; exit 1 }
-  Write-Host "`nĐã có bản mới. Nhấp đúp 2-MO-UNG-DUNG.bat — ứng dụng tự cập nhật dữ liệu và đóng gói lại." -ForegroundColor Cyan
+  if ($LASTEXITCODE -ne 0) { Say "[LỖI] Không tải được bản mới (xem thông báo phía trên)." Red; Read-Host (ConvertTo-Plain "Nhấn Enter để đóng"); exit 1 }
+  Say "`nĐã có bản mới. Nhấp đúp 2-MO-UNG-DUNG.bat — ứng dụng tự cập nhật dữ liệu và đóng gói lại." Cyan
 } else {
-  Write-Host "Thư mục này được giải nén từ file zip nên không tự tải bản mới được." -ForegroundColor Yellow
-  Write-Host "Cách cập nhật:"
-  Write-Host "  1. Tải file zip phiên bản mới."
-  Write-Host "  2. Giải nén ĐÈ vào chính thư mục này (chọn 'Replace' / 'Thay thế tất cả')."
-  Write-Host "  3. Nhấp đúp 2-MO-UNG-DUNG.bat — ứng dụng tự nhận biết bản mới, cập nhật dữ liệu và đóng gói lại."
-  Write-Host "Dữ liệu đã nhập nằm trong Docker, không bị mất khi giải nén đè."
+  Say "Thư mục này được giải nén từ file zip nên không tự tải bản mới được." Yellow
+  Say "Cách cập nhật:"
+  Say "  1. Tải file zip phiên bản mới."
+  Say "  2. Giải nén ĐÈ vào chính thư mục này (chọn 'Replace' / 'Thay thế tất cả')."
+  Say "  3. Nhấp đúp 2-MO-UNG-DUNG.bat — ứng dụng tự nhận biết bản mới, cập nhật dữ liệu và đóng gói lại."
+  Say "Dữ liệu đã nhập nằm trong Docker, không bị mất khi giải nén đè."
 }
-Read-Host "`nNhấn Enter để đóng"
+Read-Host (ConvertTo-Plain "`nNhấn Enter để đóng")

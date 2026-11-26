@@ -10,7 +10,7 @@ Unicode True
   !error "Cần /DSTAGE=<thư mục mã nguồn đã chuẩn bị>"
 !endif
 !ifndef VERSION
-  !define VERSION "0.2.2"
+  !define VERSION "0.2.3"
 !endif
 
 Name "HANA MEDIA"

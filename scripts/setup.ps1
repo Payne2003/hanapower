@@ -39,12 +39,22 @@ $LogFile = Join-Path $Root "cai-dat.log"
 try { Start-Transcript -Path $LogFile -Append | Out-Null } catch { }
 $Arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -or $env:PROCESSOR_ARCHITEW6432 -eq "ARM64") { "arm64" } else { "x64" }
 
-function Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Green }
-function Info($msg) { Write-Host "    $msg" -ForegroundColor Gray }
+function ConvertTo-Plain([string]$s) {
+  # Bỏ dấu tiếng Việt khi in ra cửa sổ: phông mặc định của cửa sổ lệnh Windows thiếu nhiều chữ có dấu (hiện ô vuông).
+  $n = $s.Replace("đ", "d").Replace("Đ", "D").Normalize([Text.NormalizationForm]::FormD)
+  $sb = New-Object Text.StringBuilder
+  foreach ($ch in $n.ToCharArray()) {
+    if ([Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne [Globalization.UnicodeCategory]::NonSpacingMark) { [void]$sb.Append($ch) }
+  }
+  $sb.ToString().Normalize([Text.NormalizationForm]::FormC).Replace("–", "-").Replace("—", "-").Replace("…", "...").Replace("·", "|")
+}
+function Say([string]$msg, [string]$color = "Gray") { Write-Host (ConvertTo-Plain $msg) -ForegroundColor $color }
+function Step($msg) { Say "`n==> $msg" Green }
+function Info($msg) { Say "    $msg" Gray }
 function Fail($msg) {
-  Write-Host "`n[LỖI] $msg" -ForegroundColor Red
-  Write-Host "Chụp màn hình cửa sổ này (hoặc gửi tệp $LogFile) cho bộ phận kỹ thuật nếu cần hỗ trợ." -ForegroundColor Yellow
-  Read-Host "Nhấn Enter để đóng"
+  Say "`n[LỖI] $msg" Red
+  Say "Chụp màn hình cửa sổ này (hoặc gửi tệp $LogFile) cho bộ phận kỹ thuật nếu cần hỗ trợ." Yellow
+  Read-Host (ConvertTo-Plain "Nhấn Enter để đóng")
   exit 1
 }
 function Test-Admin {
@@ -55,10 +65,10 @@ function Update-PathFromRegistry {
   $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
 }
 function Test-Native([scriptblock]$Command) {
-  # Chạy lệnh ngoài, chỉ quan tâm mã thoát; không để thông báo lỗi (stderr) làm dừng script trên PowerShell 5.1.
-  $old = $ErrorActionPreference
-  $ErrorActionPreference = "Continue"
-  try { & $Command *> $null; return ($LASTEXITCODE -eq 0) } catch { return $false } finally { $ErrorActionPreference = $old }
+  # Chạy lệnh ngoài qua cmd.exe, chỉ lấy mã thoát; không in thông báo lỗi khi đang chờ (vd. Docker đang khởi động).
+  $cmdline = $Command.ToString().Trim()
+  cmd.exe /c "$cmdline >nul 2>&1"
+  return ($LASTEXITCODE -eq 0)
 }
 function Has($cmd) { [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
 function Get-File($url, $dest) {
@@ -107,16 +117,16 @@ function Register-Resume {
 }
 function Request-Reboot($why) {
   Register-Resume
-  Write-Host "`n$why" -ForegroundColor Yellow
-  Write-Host "Sau khi khởi động lại và đăng nhập, phần cài đặt sẽ TỰ CHẠY TIẾP." -ForegroundColor Yellow
-  $a = Read-Host "Khởi động lại máy ngay bây giờ? (C/k)"
+  Say "`n$why" Yellow
+  Say "Sau khi khởi động lại và đăng nhập, phần cài đặt sẽ TỰ CHẠY TIẾP." Yellow
+  $a = Read-Host (ConvertTo-Plain "Khởi động lại máy ngay bây giờ? (C/k)")
   if ($a -eq "" -or $a -match "^[cCyY]") { Restart-Computer -Force }
   exit 0
 }
 
-Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "  CÀI ĐẶT HANA MEDIA – QUẢN LÝ SẢN XUẤT VIDEO" -ForegroundColor Cyan
-Write-Host "==========================================" -ForegroundColor Cyan
+Say "==========================================" Cyan
+Say "  CÀI ĐẶT HANA MEDIA – QUẢN LÝ SẢN XUẤT VIDEO" Cyan
+Say "==========================================" Cyan
 if ($Resume) { Info "Tiếp tục cài đặt sau khi khởi động lại…" }
 
 # ---------------------------------------------------------------- 1. Phần mềm nền
@@ -167,7 +177,7 @@ if (-not (Test-Native { docker info })) {
     Update-PathFromRegistry
     $ok = Test-Native { docker info }
   } while (-not $ok -and (Get-Date) -lt $deadline)
-  Write-Host ""
+  Say ""
   if (-not $ok) {
     Fail "Docker Desktop chưa sẵn sàng. Mở Docker Desktop, chấp nhận điều khoản nếu được hỏi, đợi 'Engine running' rồi chạy lại."
   }
@@ -239,13 +249,13 @@ foreach ($l in $links) {
 Set-Content -Path $Marker -Value (Get-Date -Format s)
 Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "HanaMediaSetup" -ErrorAction SilentlyContinue
 
-Write-Host "`n==========================================" -ForegroundColor Cyan
-Write-Host "  CÀI ĐẶT XONG" -ForegroundColor Cyan
-Write-Host "  Từ nay nhấp đúp biểu tượng 'HANA MEDIA' trên màn hình để mở." -ForegroundColor Cyan
-Write-Host "  Tài khoản thử: leader@hanamedia.local / hieu@hanamedia.local / duy@hanamedia.local" -ForegroundColor Cyan
-Write-Host "  Mật khẩu: MatKhau@123" -ForegroundColor Cyan
-Write-Host "==========================================" -ForegroundColor Cyan
-$a = Read-Host "Mở ứng dụng ngay? (C/k)"
+Say "`n==========================================" Cyan
+Say "  CÀI ĐẶT XONG" Cyan
+Say "  Từ nay nhấp đúp biểu tượng 'HANA MEDIA' trên màn hình để mở." Cyan
+Say "  Tài khoản thử: leader@hanamedia.local / hieu@hanamedia.local / duy@hanamedia.local" Cyan
+Say "  Mật khẩu: MatKhau@123" Cyan
+Say "==========================================" Cyan
+$a = Read-Host (ConvertTo-Plain "Mở ứng dụng ngay? (C/k)")
 if ($a -eq "" -or $a -match "^[cCyY]") {
   Start-Process $PS64 -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$Root\scripts\start.ps1`"") -WorkingDirectory $Root
 }
