@@ -1,0 +1,68 @@
+# Kiểm thử + đóng gói bộ cài Windows mỗi khi có bản mới.
+# - Mọi nhánh: tải bộ cài ở tab Actions → lần chạy → Artifacts.
+# - Nhánh main: tự tạo Release để tải trực tiếp ở trang Releases.
+name: Đóng gói bộ cài Windows
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Cài thư viện
+        run: npm ci --no-audit --no-fund
+
+      - name: Kiểm tra kiểu, lint, kiểm thử đơn vị
+        run: |
+          npm run typecheck
+          npm run lint
+          npm run test
+
+      - name: Build thử ứng dụng
+        run: npm run build
+
+      - name: Cài NSIS
+        run: sudo apt-get update -q && sudo apt-get install -y -q nsis
+
+      - name: Đóng gói bộ cài và file zip
+        id: pkg
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          bash scripts/build-installer.sh dist
+          git archive --format=zip --prefix=HanaMedia/ -o "dist/HanaMedia-Windows-$VERSION.zip" HEAD
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HanaMedia-Windows-${{ steps.pkg.outputs.version }}-${{ github.run_number }}
+          path: dist/*
+          retention-days: 30
+
+      - name: Tạo Release (nhánh main)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.pkg.outputs.version }}-build${{ github.run_number }}
+          name: HANA MEDIA ${{ steps.pkg.outputs.version }} (bản ${{ github.run_number }})
+          body: |
+            Bộ cài Windows: tải **HanaMedia-Setup-${{ steps.pkg.outputs.version }}.exe**, chạy và chọn "Yes" khi Windows hỏi quyền.
+            Cài đè lên bản cũ để cập nhật — dữ liệu đã nhập được giữ nguyên. Xem HUONG-DAN-CAI-DAT.txt trong bộ cài.
+          files: dist/*
