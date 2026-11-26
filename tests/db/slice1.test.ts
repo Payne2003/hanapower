@@ -47,7 +47,8 @@ describe("Phân quyền dự án và công việc", () => {
       await expectError(q("select create_project('Dự án lén')"), "42501");
     });
     await withUser(c, U.pm1, async (q) => {
-      const [{ id }] = (await q("select create_project('Dự án thử', 'mô tả', null, null, null, null, $1::uuid[]) as id", [[U.emp2]])) as { id: string }[];
+      const [row] = (await q("select create_project('Dự án thử', 'mô tả', null, null, null, null, $1::uuid[]) as id", [[U.emp2]])) as { id: string }[];
+      const id = row!.id;
       const members = await q("select user_id, member_role from project_members where project_id = $1 order by member_role", [id]);
       expect(members).toEqual([
         { user_id: U.pm1, member_role: "manager" },

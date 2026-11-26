@@ -1,0 +1,20 @@
+# Kiểm tra vận hành KHÔNG có Internet: đặt mạng mặc định thành internal (không có đường ra ngoài),
+# rồi chạy bộ kiểm tra trong một container trên cùng mạng.
+#   docker compose -f docker-compose.yml -f docker-compose.offline-test.yml up -d db auth rest realtime storage gateway
+#   docker compose -f docker-compose.yml -f docker-compose.offline-test.yml run --rm offline-check
+networks:
+  default:
+    internal: true
+
+services:
+  offline-check:
+    profiles: ["check"]
+    image: ${IMAGE_REGISTRY:-}node:22-alpine
+    working_dir: /work
+    volumes:
+      - ../..:/work:ro
+    environment:
+      CHECK_URL: http://gateway:8000
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+    command: ["node", "tests/onprem/offline-check.mjs"]
