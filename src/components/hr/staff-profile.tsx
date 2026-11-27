@@ -7,6 +7,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { dayIn } from "@/lib/work-board";
 import { money } from "@/lib/form-spec";
 import { Avatar } from "@/components/ui/page-header";
+import { avatarSrc } from "@/lib/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/alert";
@@ -15,6 +16,7 @@ import { RpcForm } from "@/components/rpc-form";
 import { RoleEditor } from "@/components/role-editor";
 import { PasswordResetForm } from "@/components/account-forms";
 import { DocumentUploadForm } from "@/components/hr/document-upload";
+import { DocRequests } from "@/components/hr/doc-requests";
 import { TABLE, THEAD } from "@/components/hr/ui";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +43,7 @@ export function StaffProfile({ d, tab, tabHref, today, timezone, selfId }: { d: 
   return (
     <div className="flex min-w-0 flex-col gap-4" data-testid="staff-profile" data-user={p.id}>
       <header className="flex flex-wrap items-start gap-4 rounded-xl border bg-card p-5 shadow-[var(--shadow-card)]">
-        <Avatar name={p.name} className="size-14 text-lg" />
+        <Avatar name={p.name} src={avatarSrc(p.id, p.avatar)} className="size-14 text-lg" />
         <div className="min-w-0 flex-1">
           <p className="font-mono text-xs text-muted-foreground" data-testid="profile-code">{p.code}</p>
           <h2 className="text-xl font-semibold leading-tight" data-testid="profile-name">{p.name}</h2>
@@ -176,11 +178,28 @@ export function StaffProfile({ d, tab, tabHref, today, timezone, selfId }: { d: 
       ) : null}
 
       {active === "tai-lieu" && priv ? (
-        <Card><CardHeader><CardTitle>Tài liệu hồ sơ ({d.documents.length})</CardTitle></CardHeader><CardContent className="flex flex-col gap-4">
-          {d.documents.length === 0 ? <p className="text-sm text-muted-foreground">Chưa có tài liệu.</p> : (
+        <Card><CardHeader><CardTitle>Tài liệu hệ thống yêu cầu ({d.requests.length})</CardTitle></CardHeader><CardContent className="flex flex-col gap-4" data-testid="requests-card">
+          {perms.self && !perms.staffAdmin ? <p className="text-sm text-muted-foreground">Nộp và theo dõi tài liệu ở <Link className="text-primary underline" href="/cai-dat/ho-so#tai-lieu">Cài đặt → Hồ sơ của tôi</Link>.</p> : (
+            <DocRequests items={d.requests} mode={perms.staffAdmin ? "hr" : "self"} today={today} timezone={timezone} revalidate={rev} />
+          )}
+          {perms.staffAdmin ? (
+            <details className="rounded-lg border p-3" data-testid="assign-one"><summary className="cursor-pointer text-sm font-medium text-primary">Giao yêu cầu tài liệu cho nhân viên này</summary>
+              <RpcForm rpc="assign_document_request" fixed={{ p_users: [p.id], p_dept: null }} submitLabel="Giao yêu cầu" okMessage="Đã giao yêu cầu." revalidate={rev} columns={2} className="mt-3" variant="soft"
+                fields={[
+                  { name: "p_type", label: "Loại tài liệu", type: "select", as: "uuid", required: true, options: d.docTypes.map((t) => [t.id, `${t.name}${t.is_required ? " (bắt buộc)" : ""}`] as [string, string]) },
+                  { name: "p_due", label: "Hạn nộp", type: "date" },
+                  { name: "p_note", label: "Ghi chú hướng dẫn", type: "textarea", wide: true },
+                ]} /></details>
+          ) : null}
+        </CardContent></Card>
+      ) : null}
+
+      {active === "tai-lieu" && priv ? (
+        <Card><CardHeader><CardTitle>Tài liệu hồ sơ khác ({d.documents.filter((x) => !d.requests.some((r) => r.file?.id === x.id)).length})</CardTitle></CardHeader><CardContent className="flex flex-col gap-4">
+          {d.documents.filter((x) => !d.requests.some((r) => r.file?.id === x.id)).length === 0 ? <p className="text-sm text-muted-foreground">Chưa có tài liệu.</p> : (
             <div className={TABLE}><table className="w-full min-w-[480px] text-sm" data-testid="document-list">
               <thead className={THEAD}><tr><th className="px-3.5 py-2.5">Tên tệp</th><th className="px-3.5 py-2.5">Định dạng</th><th className="px-3.5 py-2.5">Dung lượng</th><th className="px-3.5 py-2.5">Ngày tải</th><th /></tr></thead>
-              <tbody className="divide-y">{d.documents.map((x) => (
+              <tbody className="divide-y">{d.documents.filter((x) => !d.requests.some((r) => r.file?.id === x.id)).map((x) => (
                 <tr key={x.id}>
                   <td className="px-3.5 py-2.5"><span className="flex items-center gap-2"><FileText className="size-4 text-muted-foreground" aria-hidden />{x.name}</span></td>
                   <td className="px-3.5 py-2.5 text-muted-foreground">{(x.name.split(".").pop() ?? x.mime).toUpperCase()}</td>

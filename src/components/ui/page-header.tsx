@@ -43,8 +43,8 @@ export function StatCard({ label, value, icon, tone = "green", hint, testId, hre
   return href ? <a href={href} className="block h-full min-w-0 rounded-xl">{body}</a> : body;
 }
 
-/** Ảnh đại diện chữ cái đầu. */
-export function Avatar({ name, className }: { name: string | null | undefined; className?: string }) {
+/** Ảnh đại diện: ảnh nếu có (src), nếu chưa có hoặc ảnh lỗi thì hiện chữ cái đầu. */
+export function Avatar({ name, src, className }: { name: string | null | undefined; src?: string | null; className?: string }) {
   const n = (name ?? "?").trim();
   const parts = n.split(/\s+/);
   const initials = (parts.length > 1 ? parts[0]![0]! + parts[parts.length - 1]![0]! : n.slice(0, 2)).toUpperCase();
@@ -53,10 +53,15 @@ export function Avatar({ name, className }: { name: string | null | undefined; c
   return (
     <span
       aria-hidden
-      className={cn("inline-grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-semibold", className)}
+      data-avatar={src ? "image" : "initials"}
+      className={cn("relative inline-grid size-7 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-semibold", className)}
       style={{ background: `oklch(0.93 0.05 ${h})`, color: `oklch(0.38 0.1 ${h})` }}
     >
       {initials}
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" />
+      ) : null}
     </span>
   );
 }

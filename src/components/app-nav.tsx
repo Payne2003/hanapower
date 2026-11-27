@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/page-header";
+import { avatarSrc } from "@/lib/avatar";
 
 const ICONS = {
   dashboard: LayoutDashboard,
@@ -48,11 +49,13 @@ const ICONS = {
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; badge?: number };
 export type NavGroup = { label?: string; items: NavItem[] };
 
-export function AppNav({ groups, orgName, userName, roleLabel, logoutAction, searchable = false }: {
+export function AppNav({ groups, orgName, userName, userId, avatarVersion, roleLabel, logoutAction, searchable = false }: {
   groups: NavGroup[];
   searchable?: boolean;
   orgName: string;
   userName: string;
+  userId: string;
+  avatarVersion: string | null;
   roleLabel: string;
   logoutAction: () => Promise<void>;
 }) {
@@ -121,11 +124,13 @@ export function AppNav({ groups, orgName, userName, roleLabel, logoutAction, sea
 
   const footer = (
     <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
-      <Avatar name={userName} className="size-9 text-xs" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{userName}</p>
-        <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
-      </div>
+      <Link href="/cai-dat/ho-so" onClick={() => setOpen(false)} aria-label="Hồ sơ của tôi" data-testid="sidebar-profile" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg hover:opacity-80">
+        <Avatar name={userName} src={avatarSrc(userId, avatarVersion)} className="size-9 text-xs" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{userName}</p>
+          <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
+        </div>
+      </Link>
       <form action={logoutAction}>
         <button type="submit" title="Đăng xuất" aria-label="Đăng xuất" className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
           <LogOut className="size-4" aria-hidden />

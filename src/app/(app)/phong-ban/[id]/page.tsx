@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Crown } from "lucide-react";
+import { ArrowLeft, Crown, Pencil } from "lucide-react";
 import { requireContext, can, hasRole } from "@/lib/auth";
+import { avatarSrc } from "@/lib/avatar";
 import { getDepartmentOverview, getDepartmentTasks, getLookups, getStaffList, parseStaffQuery } from "@/lib/hr";
 import { badge, EMPLOYMENT_STATUS, WORK_FORM, TASK_PRIORITY, TASK_STATUS, TASK_TYPE } from "@/lib/status-maps";
 import { entityBySlug, loadLookups } from "@/lib/entities";
@@ -85,10 +86,12 @@ export default async function DepartmentPage({ params, searchParams }: { params:
             </CardContent></Card>
           </div>
           {isAdmin ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <RpcButton rpc="set_department_active" args={{ p_dept: id, p_active: !d.active }} label={d.active ? "Ngừng hoạt động phòng" : "Bật lại phòng"} variant="outline" confirm={d.active ? "Ngừng hoạt động phòng ban này? Phòng sẽ không nhận thêm thành viên mới." : undefined} revalidate={rev} />
-              <Disclosure summary="Đổi tên phòng"><EntityForm entity="department" id={id} fields={e.fields(L as never).filter((f) => f.name === "name").map((f) => ({ ...f, defaultValue: d.name }))} /></Disclosure>
-            </div>
+            <section aria-label="Quản trị phòng ban" className="flex flex-col gap-3">
+              <div>
+                <RpcButton rpc="set_department_active" args={{ p_dept: id, p_active: !d.active }} label={d.active ? "Ngừng hoạt động phòng" : "Bật lại phòng"} variant="outline" size="default" confirm={d.active ? "Ngừng hoạt động phòng ban này? Phòng sẽ không nhận thêm thành viên mới." : undefined} revalidate={rev} />
+              </div>
+              <Disclosure summary="Đổi tên phòng" icon={<Pencil className="size-4" aria-hidden />}><EntityForm entity="department" id={id} fields={e.fields(L as never).filter((f) => f.name === "name").map((f) => ({ ...f, defaultValue: d.name }))} /></Disclosure>
+            </section>
           ) : null}
         </div>
       ) : null}
@@ -102,7 +105,7 @@ export default async function DepartmentPage({ params, searchParams }: { params:
                 <tbody className="divide-y">{ov.members.map((m) => (
                   <tr key={m.id} data-member={m.id} className="align-top hover:bg-muted/30">
                     <td className="px-3.5 py-2.5 font-mono text-xs text-muted-foreground">{m.code}</td>
-                    <td className="px-3.5 py-2.5"><Link href={profileHref(m.id)} data-testid="member-link" className="flex items-center gap-2.5 hover:text-primary"><Avatar name={m.name} className="size-8" /><span className="min-w-0"><span className="flex items-center gap-1.5 font-medium">{m.name}{m.is_manager ? <Crown className="size-3.5 text-amber-600" aria-label="Quản lý phòng" /> : null}</span><span className="block truncate text-xs text-muted-foreground">{m.email}</span></span></Link></td>
+                    <td className="px-3.5 py-2.5"><Link href={profileHref(m.id)} data-testid="member-link" className="flex items-center gap-2.5 hover:text-primary"><Avatar name={m.name} src={avatarSrc(m.id, m.avatar)} className="size-8" /><span className="min-w-0"><span className="flex items-center gap-1.5 font-medium">{m.name}{m.is_manager ? <Crown className="size-3.5 text-amber-600" aria-label="Quản lý phòng" /> : null}</span><span className="block truncate text-xs text-muted-foreground">{m.email}</span></span></Link></td>
                     <td className="px-3.5 py-2.5"><span className="flex flex-wrap gap-1" data-testid="member-positions">{m.positions.length ? m.positions.map((p) => <Badge key={p.id} className="bg-muted text-foreground/80 ring-border">{p.name}</Badge>) : <span className="text-muted-foreground">Chưa có chức vụ</span>}</span></td>
                     <td className="px-3.5 py-2.5">{badge(WORK_FORM, m.work_form)}</td>
                     <td className="px-3.5 py-2.5">{badge(EMPLOYMENT_STATUS, m.status)}</td>
@@ -139,7 +142,7 @@ export default async function DepartmentPage({ params, searchParams }: { params:
             {ov.managers.length === 0 ? <p className="text-sm text-muted-foreground">Phòng chưa có người quản lý.</p> : (
               <ul className="flex flex-col gap-2" data-testid="managers">{ov.managers.map((m) => (
                 <li key={m.id} data-manager={m.id} className="flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2.5 text-sm">
-                  <Avatar name={m.name} className="size-8" />
+                  <Avatar name={m.name} src={avatarSrc(m.id, m.avatar)} className="size-8" />
                   <span className="min-w-0 flex-1"><Link href={profileHref(m.id)} className="font-medium hover:text-primary hover:underline">{m.name}</Link><span className="block text-xs text-muted-foreground">{m.code} · Chức vụ quản lý: {m.position ?? "chưa đặt"}</span></span>
                   {staffAdmin ? <RpcButton rpc="remove_department_manager" args={{ p_dept: id, p_user: m.id }} label="Kết thúc quản lý" variant="ghost" confirm={`Kết thúc vai trò quản lý phòng của ${m.name}? Người này vẫn là thành viên.`} revalidate={rev} /> : null}
                 </li>))}</ul>

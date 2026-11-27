@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Crown, Download, List, PanelLeft, Search, UserPlus } from "lucide-react";
+import { ArrowLeft, Crown, Download, FileCheck2, List, PanelLeft, Search, UserPlus } from "lucide-react";
 import { requireContext, can, hasRole } from "@/lib/auth";
+import { avatarSrc } from "@/lib/avatar";
 import { getLookups, getStaffList, getStaffSummary, parseStaffQuery, staffParams, type StaffQuery, type StaffRow } from "@/lib/hr";
 import { getProfile } from "@/lib/hr-profile";
 import { badge, EMPLOYMENT_STATUS, WORK_FORM, opts } from "@/lib/status-maps";
@@ -64,6 +65,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
       <PageHeader title="Nhân viên" eyebrow={`${list.total} người${filtered ? " khớp bộ lọc" : ""}`}
         description="Danh sách và hồ sơ nhân viên: phòng ban, chức vụ, hình thức làm việc, liên hệ, tài liệu, công việc, lương và tài khoản — mỗi mục chỉ hiện với người có quyền."
         actions={<>
+          {can(ctx, "staff.manage") || isAdmin ? <Link href="/nhan-su/giay-to" data-testid="link-docs" className="inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-lg border bg-card px-3 text-sm font-medium hover:bg-muted"><FileCheck2 className="size-4" aria-hidden />Giấy tờ nhân viên</Link> : null}
           <a href={exportHref} className="inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-lg border bg-card px-3 text-sm font-medium hover:bg-muted" data-testid="export-staff"><Download className="size-4" aria-hidden />Xuất CSV</a>
         </>} />
       {isAdmin ? (
@@ -130,7 +132,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
                     <td className="px-3.5 py-2.5 align-top font-mono text-xs text-muted-foreground">{r.code}</td>
                     <td className="px-3.5 py-2.5 align-top">
                       <Link href={url({}, { xem: "chi-tiet", id: r.id })} className="flex items-center gap-2.5 hover:text-primary" data-testid="staff-link">
-                        <Avatar name={r.name} className="size-8" /><span className="min-w-0"><span className="block font-medium">{r.name}</span><span className="block truncate text-xs text-muted-foreground">{r.email}</span></span>
+                        <Avatar name={r.name} src={avatarSrc(r.id, r.avatar)} className="size-8" /><span className="min-w-0"><span className="block font-medium">{r.name}</span><span className="block truncate text-xs text-muted-foreground">{r.email}</span></span>
                       </Link>
                     </td>
                     <td className="px-3.5 py-2.5 align-top"><Assignments r={r} /></td>
@@ -150,7 +152,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
                 <li key={r.id} data-staff={r.id} className="border-b last:border-b-0">
                   <Link href={url({}, { xem: "chi-tiet", id: r.id, muc: sp.muc })} aria-current={r.id === selectedId ? "true" : undefined}
                     className={cn("flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/50", r.id === selectedId && "bg-primary-soft/60")}>
-                    <Avatar name={r.name} className="size-8" />
+                    <Avatar name={r.name} src={avatarSrc(r.id, r.avatar)} className="size-8" />
                     <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{r.name}</span><span className="block truncate text-xs text-muted-foreground">{r.code} · {r.assignments[0]?.dept ?? "Chưa có phòng"}</span></span>
                     {r.status !== "working" ? <span className="size-2 shrink-0 rounded-full bg-amber-500" title={EMPLOYMENT_STATUS[r.status]?.[0]} aria-label={EMPLOYMENT_STATUS[r.status]?.[0]} /> : null}
                   </Link>

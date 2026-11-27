@@ -116,6 +116,28 @@ begin
     values (pg_temp.did(34, i), v_org, usr[3 + i], (array['Hop-dong-lao-dong.txt', 'Bang-cap.txt', 'CCCD-ban-sao.txt'])[i], 'text/plain', 38, usr[1]) on conflict (id) do nothing;
     insert into public.user_document_files (document_id, content) values (pg_temp.did(34, i), convert_to('Tài liệu demo — không phải hồ sơ thật.', 'UTF8')) on conflict do nothing;
   end loop;
+  -- Ảnh đại diện (ảnh PNG 1×1 màu xanh) và yêu cầu tài liệu ở đủ các trạng thái
+  for i in 1..3 loop
+    insert into public.user_avatars (user_id, org_id, mime, content, updated_at)
+    values (usr[i], v_org, 'image/png', decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'), now())
+    on conflict (user_id) do nothing;
+    update public.profiles set avatar_updated_at = now() where id = usr[i] and avatar_updated_at is null;
+  end loop;
+  for i in 1..8 loop
+    insert into public.document_requests (id, org_id, user_id, type_id, is_required, due_date, note, status, reject_reason, submitted_at, reviewed_by, reviewed_at, created_by)
+    select pg_temp.did(35, i), v_org, usr[3 + i], t.id, t.is_required, v_today + 5 + i, 'Nộp bản quét rõ nét',
+      (array['approved', 'submitted', 'rejected', 'pending'])[1 + i % 4]::public.doc_request_status,
+      case when i % 4 = 2 then 'Ảnh bị mờ, vui lòng chụp lại' end,
+      case when i % 4 in (0, 1, 2) then now() - interval '2 days' end, case when i % 4 in (0, 2) then usr[10] end, case when i % 4 in (0, 2) then now() - interval '1 day' end, usr[10]
+    from public.document_types t where t.org_id = v_org and t.name = (array['Căn cước công dân (2 mặt)', 'Hợp đồng lao động đã ký', 'Bằng cấp / chứng chỉ'])[1 + i % 3]
+    on conflict (id) do nothing;
+    if i % 4 in (0, 1, 2) then
+      insert into public.user_documents (id, org_id, user_id, name, mime, size_bytes, uploaded_by, request_id)
+      values (pg_temp.did(34, 10 + i), v_org, usr[3 + i], 'tai-lieu-demo-' || i || '.txt', 'text/plain', 38, usr[3 + i], pg_temp.did(35, i)) on conflict (id) do nothing;
+      insert into public.user_document_files (document_id, content) values (pg_temp.did(34, 10 + i), convert_to('Tài liệu demo — không phải hồ sơ thật.', 'UTF8')) on conflict do nothing;
+      update public.document_requests set document_id = pg_temp.did(34, 10 + i) where id = pg_temp.did(35, i) and document_id is null;
+    end if;
+  end loop;
   insert into public.user_departments_positions (org_id, user_id, department_id, position_id, sort_order) values
     (v_org, usr[3], d_id[u_dept[3]], pg_temp.lk('positions', v_org, 'Trưởng nhóm'), 1),
     (v_org, usr[4], d_id[1], pg_temp.lk('positions', v_org, 'Content'), 1) on conflict do nothing;

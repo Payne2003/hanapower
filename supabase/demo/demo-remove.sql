@@ -10,6 +10,8 @@ begin
   delete from public.expenses where id::text like 'dede%';
   delete from public.advances where id::text like 'dede%';
   delete from public.incomes where id::text like 'dede%';
+  delete from public.document_requests where id::text like 'dede%';          -- yêu cầu tài liệu (xóa trước tệp đã nộp)
+  delete from public.user_documents where id::text like 'dede%';
   delete from public.tasks where id::text like 'dede%';                     -- kéo theo người được giao
   delete from public.task_groups where id::text like 'dede%';               -- việc còn lại tự về "Chưa phân nhóm"
   delete from public.projects where id::text like 'dede%';                  -- kéo theo thành viên, ngân sách, mốc
