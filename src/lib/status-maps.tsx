@@ -42,3 +42,4 @@ export const EMPLOYMENT_STATUS: Record<string, Tone> = { working: ["Đang làm v
 export const WORK_FORM: Record<string, Tone> = { office: ["Tại văn phòng", B], remote: ["Làm từ xa", I], hybrid: ["Kết hợp", O] };
 export const EMPLOYMENT_TYPE: Record<string, Tone> = { official: ["Chính thức", G], probation: ["Thử việc", A], intern: ["Thực tập", B], seasonal: ["Thời vụ", O] };
 export const GENDER: Record<string, string> = { male: "Nam", female: "Nữ", other: "Khác" };
+export const DOC_STATUS: Record<string, Tone> = { pending: ["Chưa nộp", N], submitted: ["Chờ duyệt", A], approved: ["Đã duyệt", G], rejected: ["Cần nộp lại", R] };

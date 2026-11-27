@@ -8,6 +8,10 @@ import { ROLE_LABEL } from "@/lib/labels";
 import { PageHeader } from "@/components/ui/page-header";
 import { RpcForm } from "@/components/rpc-form";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import Link from "next/link";
+import { UserRound } from "lucide-react";
+import { Avatar } from "@/components/ui/page-header";
+import { avatarSrc } from "@/lib/avatar";
 
 export const metadata: Metadata = { title: "Cài đặt" };
 
@@ -20,6 +24,16 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5">
       <PageHeader title="Cài đặt" description="Tài khoản, kênh phát hành và bảo mật." />
+      <Card data-testid="my-profile-card">
+        <CardContent className="flex flex-wrap items-center gap-4 pt-5">
+          <Avatar name={ctx.full_name} src={avatarSrc(ctx.user_id, ctx.avatar_updated_at)} className="size-14 text-lg" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">Hồ sơ của tôi</p>
+            <p className="text-sm text-muted-foreground">Ảnh đại diện, thông tin liên hệ và tài liệu HR yêu cầu nộp.</p>
+          </div>
+          <Link href="/cai-dat/ho-so" className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90"><UserRound className="size-4" aria-hidden />Mở hồ sơ của tôi</Link>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader><CardTitle>Tài khoản</CardTitle></CardHeader>
         <CardContent>
@@ -55,7 +69,7 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
       ) : null}
-      <Card>
+      <Card id="mat-khau" className="scroll-mt-20">
         <CardHeader><CardTitle>Đổi mật khẩu</CardTitle></CardHeader>
         <CardContent><PasswordForm /></CardContent>
       </Card>

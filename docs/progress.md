@@ -84,6 +84,10 @@ Kiểm thử: `tests/db/work-board.test.ts` (đồng bộ, chặn bỏ qua quy t
 
 Xem `docs/nhan-su.md` (đối chiếu sơ đồ ↔ schema thật, bảng Tính năng | Bảng/cột | Quyền). Điểm chính: một người giữ **nhiều chức vụ cùng phòng**, nhiều quản lý / phòng, danh bạ nhân viên có mã NV, hình thức làm việc, loại và trạng thái nhân sự; hồ sơ có Tổng quan · Công tác · Liên hệ · Tài liệu · Công việc · Lương & bảo hiểm · Tài khoản; lọc / sắp xếp / phân trang / tổng hợp chạy ở CSDL; CSV theo bộ lọc. Kiểm thử: `tests/db/hr.test.ts` (13 bài), `tests/e2e/hr.spec.ts` (8 bài).
 
+### Bổ sung: hồ sơ tự phục vụ (migration `0940`)
+
+Cài đặt → **Hồ sơ của tôi**: ảnh đại diện (xem trước / thay / gỡ, hiện ở sidebar, danh sách nhân viên, hồ sơ, phòng ban), tự sửa địa chỉ / email / điện thoại, xem thông tin công việc và lương theo quyền, **Tài liệu cần nộp**. HR giao yêu cầu theo phòng hoặc từng người, duyệt / yêu cầu nộp lại kèm lý do, lọc ai còn thiếu giấy tờ (`/nhan-su/giay-to`). Chi tiết: `docs/nhan-su.md`. Kiểm thử: `tests/db/self-service.test.ts` (8 bài), `tests/e2e/self-service.spec.ts` (5 bài).
+
 ### Giới hạn đã biết (chưa làm hoặc làm mức cơ bản)
 
 - **Thuế TNCN không tự tính** — kế toán nhập tay thành một dòng "Thuế TNCN" (biểu thuế cần cập nhật theo quy định hiện hành). Tỷ lệ bảo hiểm mặc định 10,5% chỉnh được ở Bảng lương → Thiết lập; cần kế toán xác nhận.

@@ -14,6 +14,7 @@ export type MyContext = {
   email: string;
   department_id: string | null;
   is_active: boolean;
+  avatar_updated_at: string | null;
   roles: AppRole[];
   permissions: string[];
   today: string; // YYYY-MM-DD theo múi giờ doanh nghiệp

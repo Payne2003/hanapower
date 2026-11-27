@@ -57,7 +57,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
-      <AppNav searchable={staff} groups={groups} orgName={ctx.org_name} userName={ctx.full_name} roleLabel={roleLabel} logoutAction={signOut} />
+      <AppNav searchable={staff} groups={groups} orgName={ctx.org_name} userName={ctx.full_name} userId={ctx.user_id} avatarVersion={ctx.avatar_updated_at ?? null} roleLabel={roleLabel} logoutAction={signOut} />
       <main id="noi-dung" className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">{children}</main>
     </div>
   );

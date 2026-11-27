@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // Mọi hàm là security invoker nên quyền theo dòng do RLS của người đang xem quyết định.
 
 export type Assignment = { dept_id: string; dept: string; is_manager: boolean; positions: { id: string; name: string }[] };
-export type StaffRow = { id: string; code: string; name: string; email: string; status: string; work_form: string; type: string; active: boolean; assignments: Assignment[] };
+export type StaffRow = { id: string; code: string; name: string; email: string; status: string; work_form: string; type: string; active: boolean; avatar: string | null; assignments: Assignment[] };
 export type StaffSummary = {
   total: number; unassigned: number;
   by_status: Record<string, number>; by_work_form: Record<string, number>;
@@ -14,8 +14,8 @@ export type StaffSummary = {
 export type DeptRow = { id: string; name: string; active: boolean; member_count: number; position_count: number; managers: { id: string; name: string; position: string | null }[] };
 export type DeptOverview = {
   dept: { id: string; name: string; active: boolean };
-  managers: { id: string; code: string; name: string; position_id: string | null; position: string | null }[];
-  members: { id: string; code: string; name: string; email: string; work_form: string; status: string; type: string; is_manager: boolean; is_primary: boolean; positions: { id: string; name: string }[] }[];
+  managers: { id: string; code: string; name: string; avatar: string | null; position_id: string | null; position: string | null }[];
+  members: { id: string; code: string; name: string; avatar: string | null; email: string; work_form: string; status: string; type: string; is_manager: boolean; is_primary: boolean; positions: { id: string; name: string }[] }[];
   by_position: { id: string; name: string; count: number }[]; by_work_form: Record<string, number>; by_status: Record<string, number>;
   member_count: number; position_count: number;
 };

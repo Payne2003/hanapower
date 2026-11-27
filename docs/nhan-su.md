@@ -41,3 +41,21 @@ Phân biệt: **chức vụ trong phòng** (`user_departments_positions.position
 | Nhật ký | `audit_logs` (`department.*`, `staff.*`) | `audit.view` | tự ghi trong các hàm; không lưu nội dung nhạy cảm |
 
 Quyền mới `staff.manage`: gán cho `system_admin` và `hr`.
+
+## Hồ sơ tự phục vụ (migration `20261127000940_self_service.sql`)
+
+Điểm vào: **Cài đặt → Hồ sơ của tôi** (`/cai-dat/ho-so`); thẻ tài khoản cuối sidebar cũng dẫn tới đây. Đổi mật khẩu vẫn ở Cài đặt.
+
+| Tính năng | Bảng / cột | Hàm / endpoint | Quyền |
+|---|---|---|---|
+| Ảnh đại diện (JPEG/PNG/WebP ≤ 2 MB, kiểm tra cả chữ ký tệp) | `user_avatars`, `profiles.avatar_updated_at` | `set_my_avatar`, `remove_my_avatar`, `get_avatar`; `GET /anh-dai-dien/<id>` | chỉ đổi / gỡ ảnh của chính mình (`auth.uid()`); xem: đồng nghiệp trong công ty (trừ cộng tác viên xem ảnh người khác) |
+| Tự sửa thông tin | `staff_personal.address`, `user_emails`, `user_phones` | `save_my_profile`, server action `myContactAction` (kiểm tra dòng thuộc về chính người đăng nhập) | chính chủ; ngày sinh, giới tính, CCCD, MST, mã NV, hồ sơ làm việc, vai trò, hợp đồng, lương chỉ HR/quản trị sửa |
+| Mẫu tài liệu | `document_types` (tên, hướng dẫn, bắt buộc, định dạng, dung lượng ≤ 5 MB) | `save_document_type`; `seed_document_types` cho doanh nghiệp mới | xem: nhân viên; sửa: `staff.manage` / `users.manage` |
+| Yêu cầu giao từng nhân viên | `document_requests` (trạng thái `pending/submitted/approved/rejected`, hạn, ghi chú, lý do, người duyệt + thời điểm, `document_id` → `user_documents`) | `assign_document_request` (theo phòng và/hoặc từng người, cập nhật không nhân đôi, bỏ qua yêu cầu đã duyệt) | giao / duyệt / xóa: HR, quản trị; xem: chính chủ + HR, quản trị |
+| Nộp / thay tệp | `user_documents.request_id`, `user_document_files` | `submit_my_document` (định dạng, dung lượng theo loại; chuyển về “Chờ duyệt”; thay bản cũ); server action kiểm tra chữ ký tệp | chỉ yêu cầu của chính mình; đã duyệt thì không thay |
+| Duyệt / yêu cầu nộp lại | như trên | `review_document_request` (lý do bắt buộc khi trả lại) | HR, quản trị |
+| Tình trạng hồ sơ | view tính trong hàm | `doc_status_list` (hoàn thành = mọi tài liệu **bắt buộc** đã duyệt; lọc phòng + tình trạng; phân trang) | HR, quản trị |
+| Thông báo | `notifications` (`doc_request`, `doc_submitted`, `doc_approved`, `doc_rejected`) | `app.notify_link`, `app.notify_permission` | người nhận theo vai trò |
+| Tải tệp | — | `GET /nhan-su/tai-lieu/<id>` → `get_user_document` | chính chủ + HR, quản trị; ngoài phạm vi: 404 |
+
+Tệp hồ sơ cũ (không gắn yêu cầu) giữ nguyên và truy cập theo quyền hiện tại. Lưu trữ tệp dùng chung cơ chế riêng tư trong CSDL của phân hệ Nhân sự (≤ 5 MB / tệp, 2 MB / ảnh); tệp lớn hơn cần bucket Storage riêng.
