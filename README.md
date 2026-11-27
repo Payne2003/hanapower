@@ -9,6 +9,7 @@ kèm thông báo trong ứng dụng, lịch sử từng bước, trao đổi the
 - **Công nghệ:** Next.js 15 (App Router) · TypeScript strict · Tailwind CSS 4 · thành phần kiểu shadcn/ui · Supabase (PostgreSQL, Auth, Realtime, Storage) · Vitest · Playwright.
 - **Kiến trúc, sơ đồ triển khai, quan hệ dữ liệu, luồng bàn giao:** [docs/architecture.md](docs/architecture.md)
 - **Tiến độ theo giai đoạn và kết quả kiểm thử:** [docs/progress.md](docs/progress.md)
+- **Lộ trình phát triển tiếp theo (đối chiếu với CRM Apollo):** [docs/roadmap.md](docs/roadmap.md)
 - **Triển khai:** [docs/deploy-cloud.md](docs/deploy-cloud.md) (cloud — Supabase + Vercel, từng bước bấm chuột) · [docs/deploy-onprem.md](docs/deploy-onprem.md) (máy chủ tại văn phòng)
 - **Lần đầu trên hệ thống trống:** trang `/khoi-tao` tạo doanh nghiệp + quản trị viên; sau đó quản trị viên tạo tài khoản nhân viên ở **Nhân sự**.
 
