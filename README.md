@@ -109,7 +109,11 @@ Mật khẩu chung: **`MatKhau@123`** (chỉ dữ liệu phát triển).
 | `duy@hanamedia.local` | Duy | Editor | Xác nhận nhận đủ / yêu cầu bổ sung, cập nhật tiến độ dựng, nộp duyệt |
 | `hoa@hanamedia.local` | Hòa | Editor | như trên |
 | `tien@hanamedia.local` | Tiện | Editor | như trên |
-| `admin@hanamedia.local` | Quản trị hệ thống | Quản trị hệ thống | Vai trò, khóa tài khoản, nhật ký |
+| `admin@hanamedia.local` | Quản trị hệ thống | Quản trị hệ thống | Vai trò, khóa tài khoản, nhật ký, mọi mục |
+| `ketoan@hanamedia.local` | Kế toán Lan | Kế toán | Duyệt & thanh toán chi phí, tạm ứng, xuất hóa đơn / thu tiền, duyệt bảng lương, xuất dữ liệu cho kế toán |
+| `nhansu@hanamedia.local` | Nhân sự Mai | Nhân sự | Hồ sơ lương, chấm công, lập & kiểm tra bảng lương |
+| `truongnhom@hanamedia.local` | Trưởng nhóm Bình | Trưởng nhóm | Tạo dự án, xem & ghi CRM |
+| `ctv@hanamedia.local` | Cộng tác viên Trang | Cộng tác viên | Chỉ thấy đầu việc được giao: nhận việc, bàn giao, xem trạng thái thanh toán |
 | `nguoingoai@congtykhac.local` | Người Ngoài | Doanh nghiệp khác | Kiểm tra cô lập dữ liệu |
 
 Dữ liệu mẫu: **D0001–D0009 lấy từ tab "Báo cáo Content t11"** trong Google Sheet của bạn (link Drive được thay bằng link giả); D0010–D0012 là video mẫu minh họa các bước Chờ duyệt, Chờ đăng, Đã đăng.

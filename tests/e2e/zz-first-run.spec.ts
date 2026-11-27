@@ -32,7 +32,7 @@ test("khởi tạo lần đầu, tạo tài khoản nhân viên, đặt lại m�
   await expect(other).toHaveURL(/\/dang-nhap/);
 
   // Tạo tài khoản nhân viên
-  await page.getByRole("link", { name: "Nhân sự" }).click();
+  await page.getByRole("link", { name: "Nhân viên", exact: true }).click();
   await page.getByText("Tạo tài khoản nhân viên").click();
   await page.getByLabel("Họ tên").fill("Nhân Viên Mới");
   await page.getByLabel("Email đăng nhập").fill("nhanvien.moi@vidu.vn");
@@ -54,5 +54,5 @@ test("khởi tạo lần đầu, tạo tài khoản nhân viên, đặt lại m�
   await expect(other.getByRole("heading", { name: "Xin chào, Nhân Viên Mới" })).toBeVisible();
   await other.getByRole("link", { name: "Video", exact: true }).click();
   await expect(other.getByText("Tạo video mới")).toBeVisible();
-  await expect(other.getByRole("link", { name: "Nhân sự" })).toHaveCount(0);
+  await expect(other.getByRole("link", { name: "Nhân viên", exact: true })).toHaveCount(0);
 });

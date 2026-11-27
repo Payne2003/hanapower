@@ -46,8 +46,12 @@ export const PRIORITY: Record<VideoPriority, { label: string; tone: string }> = 
 export const ROLE_LABEL: Record<AppRole, string> = {
   system_admin: "Quản trị hệ thống",
   manager: "Leader / Quản lý sản xuất",
+  team_lead: "Trưởng nhóm",
   content: "Content",
   editor: "Editor",
+  accountant: "Kế toán",
+  hr: "Nhân sự",
+  collaborator: "Cộng tác viên",
 };
 
 export const EVENT_LABEL: Record<string, string> = {

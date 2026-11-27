@@ -8,9 +8,43 @@ Quy ước: **Đã chạy & kiểm thử** = mã đã triển khai và có kiể
 | 2 | Nhân sự và quyền: vai trò Leader / Content / Editor / Quản trị, RLS | **Đã chạy & kiểm thử**. Chưa có giao diện tạo tài khoản (dùng `bootstrap-org.mjs` + seed) |
 | 3 | Quy trình sản xuất video (thay Google Sheet): Content → bàn giao → Editor → dựng → duyệt → đăng | **Đã chạy & kiểm thử** |
 | 4 | Báo cáo tháng, thông báo trong ứng dụng, bảng & Kanban | **Đã chạy & kiểm thử** (thông báo hiện khi tải trang; đẩy thời gian thực chưa làm) |
+| 8 | CRM + dự án + tài chính + cộng tác viên + lương (mô hình CRM Apollo) | **Đã chạy & kiểm thử ở mức cơ bản** — xem mục 2026-11-27 bên dưới |
 | 5 | Chat thời gian thực | **Chưa làm** (đã có trao đổi theo từng video; Realtime tự lưu trữ đã xác minh hoạt động) |
 | 6 | Hoàn thiện PWA | **Một phần**: manifest, icon, cửa sổ độc lập. Chưa có service worker, trang ngoại tuyến |
 | 7 | Kiểm thử hai máy, chạy thử một phòng ban; cloud / tại văn phòng | **Một phần**: tại văn phòng đã chạy trong Docker (cả không Internet); cloud mới có tài liệu |
+
+---
+
+## Mở rộng theo mô hình CRM Apollo: CRM + dự án + tài chính + cộng tác viên + lương (2026-11-27)
+
+Mục tiêu của đợt này: **có đủ khung menu / trang giống CRM Apollo để xem tổng quan**, mỗi mục chạy được ở mức cơ bản; chiều sâu bổ sung sau.
+
+### Đã chạy & kiểm thử
+
+- **CRM**: Lead (chuyển đổi → tài khoản + liên hệ + cơ hội), Tài khoản, Liên hệ, Cơ hội (dòng sản phẩm, đổi giai đoạn, thua cần lý do), Báo giá (chụp lại số liệu khi tạo; nháp → gửi duyệt → duyệt → gửi khách → chấp nhận), Hợp đồng (nháp → chờ → kích hoạt ⇒ cơ hội "Thắng"), Đơn hàng, Sản phẩm, Danh mục, Đơn vị, Bảng giá (đơn giá / phí / thuế theo sản phẩm), Nguồn lead, Ngành nghề, Phòng ban, Chức vụ, Công việc.
+- **Dự án** (nhiều bộ phận, theo vai trò / thành viên): tạo từ hợp đồng hoặc nhập tay; thành viên chỉ thấy dự án mình tham gia; **tiền (giá trị HĐ, ngân sách, mốc, thu chi) chỉ quản lý dự án + kế toán thấy**; mốc nghiệm thu → xuất hóa đơn → thu tiền; video gắn dự án; đóng dự án cần nghiệm thu hết mốc.
+- **Tài chính**: chi phí (đề nghị → duyệt → thanh toán, không tự duyệt), tạm ứng (đề nghị → duyệt → giải ngân → quyết toán), khoản thu, công nợ phải thu / phải trả, lãi / lỗ theo dự án, xuất CSV cho kế toán (chi phí, thu, lãi lỗ).
+- **Cộng tác viên**: hồ sơ + thông tin thanh toán (chỉ kế toán / người quản lý thấy), giao việc theo dự án, nhận việc → bàn giao (link) → nghiệm thu → **tự tạo đề nghị chi thù lao** → trạng thái thanh toán đồng bộ từ kế toán. Tài khoản cộng tác viên chỉ thấy việc của mình (policy RESTRICTIVE chặn mọi bảng nội bộ).
+- **Lương**: hồ sơ lương + phụ cấp, chấm công vào / ra (và điều chỉnh), thưởng theo dự án (quản lý đề xuất → kế toán duyệt → tự vào bảng lương), kỳ lương nháp → nhân sự kiểm tra → kế toán duyệt → chi trả, khóa chấm công khi kỳ đã khóa, nhân viên xem phiếu lương của mình sau khi duyệt, xuất CSV bảng lương.
+- **Giao diện**: thanh bên chia nhóm giống CRM (Sản xuất video, Bán hàng, Sản phẩm, Tài chính, Nhân sự, Hệ thống), tổng quan hoạt động theo quyền, trang chủ riêng cho cộng tác viên.
+
+### Kết quả kiểm thử
+
+| Bộ | Kết quả |
+|---|---|
+| `tsc` strict, ESLint, `next build` | Đạt |
+| Unit | 7/7 |
+| CSDL (Postgres thật, migration `0400`–`0820`) | **39/39** (18 quy trình video + 21 CRM / dự án / tài chính / cộng tác viên / lương) |
+| E2E Playwright | **14/14** (7 mới: mở mọi trang, tài khoản + chuyển đổi lead, cơ hội → báo giá → hợp đồng → dự án, quyền xem tiền của dự án, chi phí duyệt → thanh toán, cộng tác viên, lương) |
+
+### Giới hạn đã biết (chưa làm hoặc làm mức cơ bản)
+
+- **Thuế TNCN không tự tính** — kế toán nhập tay thành một dòng "Thuế TNCN" (biểu thuế cần cập nhật theo quy định hiện hành). Tỷ lệ bảo hiểm mặc định 10,5% chỉnh được ở Bảng lương → Thiết lập; cần kế toán xác nhận.
+- Lãi / lỗ dự án **chưa gồm lương** và chi phí chung không gắn dự án.
+- Báo giá không có bản in / PDF; hợp đồng chưa có tệp đính kèm; chưa có phụ lục / thay đổi giá trị hợp đồng; chưa có tồn kho / giao hàng cho đơn hàng.
+- Các danh mục CRM chỉ có tìm kiếm + lọc 1 cột; chưa có nhập từ Excel (chỉ video), chưa có theo dõi người theo dõi (follower), lịch sử hoạt động từng khách, nhắc việc tự động gửi (đã lưu `reminder_at`, chưa có tiến trình gửi).
+- Xuất dữ liệu dạng CSV UTF-8 (mở bằng Excel); số tài khoản có số 0 đầu có thể bị Excel cắt — nhập cột dạng Text.
+- Chưa thử trên Windows thật / Vercel thật với các migration mới: cần chạy workflow "Cập nhật cơ sở dữ liệu cloud" sau khi gộp.
 
 ---
 
