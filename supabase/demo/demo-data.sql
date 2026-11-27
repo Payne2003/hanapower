@@ -98,6 +98,28 @@ begin
     (v_org, d_id[4], usr[3], pg_temp.lk('positions', v_org, 'Trưởng nhóm')), (v_org, d_id[2], usr[10], pg_temp.lk('positions', v_org, 'Kế toán')) on conflict do nothing;
   update public.departments set manager_id = usr[1] where id = d_id[1] and manager_id is null;
 
+  -- Hồ sơ nhân viên demo: hình thức làm việc, loại nhân sự, thông tin cá nhân, liên hệ, tài liệu, kiêm chức vụ / kiêm phòng
+  for i in 1..array_length(usr, 1) loop
+    update public.profiles set work_form = (array['office', 'office', 'hybrid', 'remote'])[1 + i % 4]::public.work_form,
+      employment_type = (case when i % 6 = 0 then 'probation' when i % 7 = 0 then 'intern' else 'official' end)::public.employment_type,
+      employment_status = (case when i = 12 then 'on_leave' else 'working' end)::public.employment_status, joined_on = v_today - (200 + i * 37)
+    where id = usr[i];
+    insert into public.staff_personal (user_id, org_id, date_of_birth, gender, address, id_number, tax_code)
+    values (usr[i], v_org, date '1990-01-15' + i * 211, (array['male', 'female'])[1 + i % 2], (100 + i)::text || ' Nguyễn Huệ, Quận 1, TP.HCM', '0790' || lpad((90000000 + i)::text, 8, '0'), '80' || lpad((10000000 + i)::text, 8, '0'))
+    on conflict (user_id) do nothing;
+    insert into public.user_emails (id, org_id, user_id, email, is_primary) values (pg_temp.did(32, i), v_org, usr[i], 'demo.canhan' || i || '@gmail.example', true) on conflict (id) do nothing;
+    insert into public.user_phones (id, org_id, user_id, country_code, phone, is_primary) values (pg_temp.did(33, i), v_org, usr[i], '+84', '09' || lpad((20000000 + i * 7919)::text, 8, '0'), true) on conflict (id) do nothing;
+  end loop;
+  insert into public.user_phones (id, org_id, user_id, country_code, phone, is_primary) values (pg_temp.did(33, 101), v_org, usr[3], '+84', '0283822' || '0000', false) on conflict (id) do nothing;
+  for i in 1..3 loop
+    insert into public.user_documents (id, org_id, user_id, name, mime, size_bytes, uploaded_by)
+    values (pg_temp.did(34, i), v_org, usr[3 + i], (array['Hop-dong-lao-dong.txt', 'Bang-cap.txt', 'CCCD-ban-sao.txt'])[i], 'text/plain', 38, usr[1]) on conflict (id) do nothing;
+    insert into public.user_document_files (document_id, content) values (pg_temp.did(34, i), convert_to('Tài liệu demo — không phải hồ sơ thật.', 'UTF8')) on conflict do nothing;
+  end loop;
+  insert into public.user_departments_positions (org_id, user_id, department_id, position_id, sort_order) values
+    (v_org, usr[3], d_id[u_dept[3]], pg_temp.lk('positions', v_org, 'Trưởng nhóm'), 1),
+    (v_org, usr[4], d_id[1], pg_temp.lk('positions', v_org, 'Content'), 1) on conflict do nothing;
+
   -- ---------------- Kênh -----------------
   for i in 1..3 loop
     insert into public.channels (id, org_id, name, platform, url) values (pg_temp.did(2, i), v_org, (array['Thế giới hoang dã HANA','Khám phá thiên nhiên','HANA Shorts'])[i], 'YouTube', 'https://www.youtube.com/@hana-demo-' || i) on conflict (id) do nothing;

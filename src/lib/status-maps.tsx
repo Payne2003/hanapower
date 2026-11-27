@@ -36,3 +36,9 @@ export const badge = (map: Record<string, Tone>, v: unknown): ReactNode => {
   return e ? <Badge className={e[1]}>{e[0]}</Badge> : <>{String(v ?? "—")}</>;
 };
 export const opts = (map: Record<string, Tone | string>): [string, string][] => Object.entries(map).map(([k, v]) => [k, typeof v === "string" ? v : v[0]]);
+
+// ---- Nhân sự ----
+export const EMPLOYMENT_STATUS: Record<string, Tone> = { working: ["Đang làm việc", G], on_leave: ["Nghỉ dài hạn", A], resigned: ["Đã nghỉ việc", N] };
+export const WORK_FORM: Record<string, Tone> = { office: ["Tại văn phòng", B], remote: ["Làm từ xa", I], hybrid: ["Kết hợp", O] };
+export const EMPLOYMENT_TYPE: Record<string, Tone> = { official: ["Chính thức", G], probation: ["Thử việc", A], intern: ["Thực tập", B], seasonal: ["Thời vụ", O] };
+export const GENDER: Record<string, string> = { male: "Nam", female: "Nữ", other: "Khác" };

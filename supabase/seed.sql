@@ -131,7 +131,7 @@ where v.org_id = '00000000-0000-4000-a000-000000000001'
 on conflict do nothing;
 
 insert into public.org_counters (org_id, last_video_no) values ('00000000-0000-4000-a000-000000000001', 12)
-on conflict (org_id) do nothing;
+on conflict (org_id) do update set last_video_no = excluded.last_video_no; -- hàng bộ đếm đã được trigger mã nhân viên tạo từ trước
 
 -- Video của doanh nghiệp khác (kiểm thử cô lập)
 insert into public.videos (id, org_id, code, title, stage, report_date, created_by)
