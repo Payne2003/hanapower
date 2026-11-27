@@ -34,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/lead", label: "Lead", icon: "lead" }, { href: "/tai-khoan", label: "Tài khoản", icon: "account" }, { href: "/lien-he", label: "Liên hệ", icon: "contact" },
         { href: "/co-hoi", label: "Cơ hội", icon: "opportunity" }, { href: "/bao-gia", label: "Báo giá", icon: "quote" },
         { href: "/hop-dong", label: "Hợp đồng", icon: "contract" }, { href: "/don-hang", label: "Đơn hàng", icon: "order" },
+        { href: "/bao-cao-ban-hang", label: "Báo cáo bán hàng", icon: "chart" },
       ] });
       groups.push({ label: "Sản phẩm", items: [
         { href: "/san-pham", label: "Sản phẩm / dịch vụ", icon: "product" }, { href: "/danh-muc", label: "Danh mục", icon: "category" },
@@ -44,7 +45,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     groups.push({ label: "Tài chính", items: [{ href: "/thu-chi", label: "Thu chi & công nợ", icon: "finance" }] });
     const hr: NavItem[] = [{ href: "/cham-cong", label: "Chấm công", icon: "attendance" }, { href: "/luong", label: "Bảng lương", icon: "payroll" }];
     if (can(ctx, "users.manage") || hasRole(ctx, "manager")) hr.unshift({ href: "/nhan-su", label: "Nhân viên", icon: "people" });
-    if (can(ctx, "users.manage")) hr.push({ href: "/phong-ban", label: "Phòng ban", icon: "department" }, { href: "/chuc-vu", label: "Chức vụ", icon: "position" });
+    hr.push({ href: "/phong-ban", label: "Phòng ban", icon: "department" });
+    if (can(ctx, "users.manage")) hr.push({ href: "/chuc-vu", label: "Chức vụ", icon: "position" });
     groups.push({ label: "Nhân sự", items: hr });
     groups.push({ label: "Hệ thống", items: [
       { href: "/thong-bao", label: "Thông báo", icon: "bell", badge: unread ?? undefined }, { href: "/tro-chuyen", label: "Trò chuyện", icon: "chat" },
@@ -56,7 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
-      <AppNav groups={groups} orgName={ctx.org_name} userName={ctx.full_name} roleLabel={roleLabel} logoutAction={signOut} />
+      <AppNav searchable={staff} groups={groups} orgName={ctx.org_name} userName={ctx.full_name} roleLabel={roleLabel} logoutAction={signOut} />
       <main id="noi-dung" className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">{children}</main>
     </div>
   );

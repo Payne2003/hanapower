@@ -1,6 +1,6 @@
 # Dữ liệu ảo để xem demo
 
-Nạp một bộ dữ liệu mẫu phủ **mọi bảng** (khoảng 36 video, 24 lead, 15 khách hàng, 16 cơ hội, 12 báo giá, 5 hợp đồng, 6 dự án, thu chi, tạm ứng, cộng tác viên, chấm công 3 tháng, 2 kỳ lương…) để xem toàn bộ ứng dụng có số liệu. Ngày tháng tính theo hôm nay nên luôn "mới".
+Nạp một bộ dữ liệu mẫu phủ **mọi bảng** (khoảng 36 video, 24 lead, 15 khách hàng, 16 cơ hội, 12 báo giá, 5 hợp đồng, 6 dự án, thu chi, tạm ứng, cộng tác viên, chấm công 3 tháng, 2 kỳ lương, ghi chú và lịch sử hoạt động…) để xem toàn bộ ứng dụng có số liệu. Ngày tháng tính theo hôm nay nên luôn "mới".
 
 ## Cách an toàn
 

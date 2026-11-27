@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { BusinessOverview } from "@/components/business-overview";
 import { CollabHome } from "@/components/collab-home";
+import { AttentionCard, DashboardCharts } from "@/components/dashboard-charts";
 
 function greeting() {
   const h = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Asia/Ho_Chi_Minh" }).format(new Date()));
@@ -53,6 +54,8 @@ export default async function DashboardPage() {
       </section>
 
       <BusinessOverview ctx={ctx} />
+      <AttentionCard ctx={ctx} />
+      <DashboardCharts ctx={ctx} />
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <section aria-labelledby="todo-h" className="flex flex-col gap-3">

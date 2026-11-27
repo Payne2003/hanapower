@@ -2,7 +2,8 @@
 do $rm$
 declare v_org uuid := current_setting('demo.org')::uuid;
 begin
-  delete from public.audit_logs where action = 'demo.seed' and details->>'note' like 'Dữ liệu demo%';
+  delete from public.audit_logs where (action = 'demo.seed' and details->>'note' like 'Dữ liệu demo%') or details->>'demo' = 'true';
+  delete from public.crm_notes where id::text like 'dede%';
   delete from public.payroll_periods where id::text like 'dede%';          -- kéo theo dòng lương, khoản lương
   delete from public.project_bonuses where id::text like 'dede%';
   delete from public.freelance_assignments where id::text like 'dede%';

@@ -39,11 +39,12 @@ export function DataTable<T extends { id?: unknown }>({ rows, cols, href, empty,
 }
 
 /** Ô tìm kiếm + lọc theo một cột (GET form, hoạt động không cần JavaScript). */
-export function ListToolbar({ q, filter, filterValue, action }: {
-  q?: string; filter?: { col: string; label: string; options: [string, string][] }; filterValue?: string; action: string;
+export function ListToolbar({ q, filter, filterValue, action, hidden }: {
+  q?: string; filter?: { col: string; label: string; options: [string, string][] }; filterValue?: string; action: string; hidden?: Record<string, string>;
 }) {
   return (
     <form action={action} method="get" className="flex flex-col gap-2 sm:flex-row" role="search">
+      {Object.entries(hidden ?? {}).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
       <div className="relative flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input name="q" defaultValue={q} placeholder="Tìm kiếm…" className="pl-9" aria-label="Tìm kiếm" />

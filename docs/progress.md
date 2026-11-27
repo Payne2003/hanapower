@@ -34,7 +34,7 @@ Mục tiêu của đợt này: **có đủ khung menu / trang giống CRM Apollo
 |---|---|
 | `tsc` strict, ESLint, `next build` | Đạt |
 | Unit | 7/7 |
-| CSDL (Postgres thật, migration `0400`–`0860`) | **47/47** (18 quy trình video + 21 CRM / dự án / tài chính / cộng tác viên / lương) |
+| CSDL (Postgres thật, migration `0400`–`0900`) | **56/56** (18 quy trình video + 21 CRM / dự án / tài chính / cộng tác viên / lương) |
 | E2E Playwright | **14/14** (7 mới: mở mọi trang, tài khoản + chuyển đổi lead, cơ hội → báo giá → hợp đồng → dự án, quyền xem tiền của dự án, chi phí duyệt → thanh toán, cộng tác viên, lương) |
 
 ### Bổ sung: báo giá PDF và nhập khách hàng từ Excel (2026-11-27, migration `0840`–`0850`)
@@ -57,6 +57,15 @@ Mục tiêu của đợt này: **có đủ khung menu / trang giống CRM Apollo
 - `node scripts/seed-demo.mjs --password … [--org …]` nạp bộ dữ liệu phủ **cả 54 bảng** (video, CRM, báo giá → hợp đồng → dự án, thu chi, tạm ứng, cộng tác viên, chấm công 3 tháng, 2 kỳ lương, thông báo, nhật ký…) cùng 13 tài khoản demo theo vai trò; `--remove` gỡ sạch (id đánh dấu `dede…`, không đụng dữ liệu thật). Chạy lại không nhân đôi. Có workflow tay "Dữ liệu demo (nạp / gỡ)" cho cloud.
 - Kiểm thử (`tests/db/zz-demo.test.ts`): mọi bảng có dữ liệu, nạp lại không đổi số dòng, gỡ về đúng trạng thái trước, báo giá / bảng lương cộng khớp, ràng buộc video thỏa; đã mở mọi trang bằng 6 tài khoản demo không lỗi.
 - Kiểm thử tổng: unit 34, CSDL 47, E2E 18.
+
+### Bổ sung: phòng ban có nhân viên, biểu đồ Dashboard và nâng cấp CRM (migration `0900`)
+
+- **Phòng ban chứa nhân viên** (`/phong-ban`, `/phong-ban/<id>`): thẻ từng phòng (số người, trưởng phòng, ảnh đại diện, cơ cấu vai trò), trang chi tiết có danh sách nhân viên + chức vụ trong phòng + vai trò, **thêm nhân viên / gỡ / đặt trưởng phòng** (chỉ quản trị — kiểm tra ở CSDL), một người thuộc nhiều phòng (phòng chính + kiêm nhiệm), danh sách "chưa thuộc phòng nào". Mọi nhân viên (trừ cộng tác viên) xem được cơ cấu.
+- **Dashboard biểu đồ** (không dùng thư viện ngoài, chữ đọc được trên điện thoại, có mô tả cho trình đọc màn hình): thu – chi 6 tháng, phễu cơ hội theo giai đoạn, video tạo / đăng theo tuần, video theo giai đoạn, nhân sự theo phòng ban, dự án theo trạng thái, lead theo nguồn / trạng thái, khách hàng có giá trị hợp đồng cao nhất; mỗi người chỉ thấy biểu đồ thuộc quyền của mình (tính ở CSDL theo RLS). Có khối "Cần chú ý trong bán hàng" (báo giá / hợp đồng sắp hết hạn, cơ hội quá ngày chốt, lead lâu chưa chăm).
+- **Báo cáo bán hàng** (`/bao-cao-ban-hang`): giá trị đang theo đuổi, dự báo theo xác suất, tỷ lệ thắng, giá trị trung bình, chu kỳ chốt; dự báo doanh thu theo tháng dự kiến chốt; hợp đồng ký theo tháng; báo giá theo trạng thái; lý do thua; hiệu quả theo nguồn lead; kết quả theo người phụ trách.
+- **Tính năng giống CRM**: **ghi chú & lịch sử hoạt động** trên lead / tài khoản / liên hệ / cơ hội / dự án (ghi chú có ghim, nhật ký thao tác dịch ra tiếng Việt, công việc liên quan, thêm công việc ngay trên bản ghi); **Kanban kéo thả** cho Cơ hội và Lead (có ô chọn cột cho điện thoại / bàn phím; cột Thắng tự động theo hợp đồng, thua phải nhập lý do); **tìm kiếm nhanh** ở thanh bên + trang kết quả gom theo loại; **xuất CSV** theo bộ lọc đang xem ở mọi danh sách CRM.
+- Dữ liệu demo bổ sung ghi chú và lịch sử hoạt động; kiểm thử "mọi bảng có dữ liệu" tự bao gồm bảng mới.
+- Kiểm thử: unit 34, CSDL 56, E2E 22.
 
 ### Giới hạn đã biết (chưa làm hoặc làm mức cơ bản)
 

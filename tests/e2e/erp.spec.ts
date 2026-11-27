@@ -294,3 +294,104 @@ test("nhập sản phẩm từ Excel: khớp danh mục, tự tạo danh mục m
   await p.getByRole("button", { name: "Đọc tệp và xem trước" }).click();
   await expect(p.getByTestId("import-summary")).toContainText("0 bản ghi mới");
 });
+
+test("Dashboard có biểu đồ thống kê theo quyền; báo cáo bán hàng chỉ cho người có quyền CRM", async ({ browser }) => {
+  const l = await login(browser, "leader@hanamedia.local");
+  await expect(l.getByRole("heading", { name: "Biểu đồ thống kê" })).toBeVisible();
+  for (const name of [/^Thu chi theo tháng/, /^Cơ hội theo giai đoạn/, /^Video theo tuần/, /^Nhân sự theo phòng ban/]) {
+    await expect(l.getByRole("img", { name })).toBeVisible();
+  }
+  await l.getByRole("link", { name: "Báo cáo bán hàng →" }).click();
+  await expect(l.getByRole("heading", { name: "Báo cáo bán hàng" })).toBeVisible();
+  await expect(l.getByText("Tỷ lệ thắng")).toBeVisible();
+  await expect(l.getByRole("heading", { name: "Dự báo doanh thu theo tháng dự kiến chốt" })).toBeVisible();
+  await expect(l.getByRole("heading", { name: "Phễu cơ hội" })).toBeVisible();
+
+  const h = await login(browser, "hieu@hanamedia.local");
+  await expect(h.getByRole("heading", { name: "Biểu đồ thống kê" })).toBeVisible();
+  await expect(h.getByRole("img", { name: /^Thu chi theo tháng/ })).toHaveCount(0);
+  await expect(h.getByRole("img", { name: /^Cơ hội theo giai đoạn/ })).toHaveCount(0);
+  await expect(h.getByRole("img", { name: /^Video theo tuần/ })).toBeVisible();
+  await h.goto("/bao-cao-ban-hang");
+  await expect(h.getByText("Bạn chưa có quyền xem mục này")).toBeVisible();
+});
+
+test("Phòng ban chứa nhân viên: xem cơ cấu, thêm / đặt trưởng phòng / gỡ nhân viên (chỉ quản trị)", async ({ browser }) => {
+  const a = await login(browser, "admin@hanamedia.local");
+  await a.goto("/phong-ban");
+  await expect(a.getByTestId("department-cards")).toContainText("Bộ phận Content");
+  await a.getByRole("link", { name: /Bộ phận Content/ }).click();
+  await expect(a.getByTestId("department-members")).toContainText("Hiếu");
+  await expect(a.getByTestId("department-members")).not.toContainText("Hòa");
+  await a.getByLabel("Nhân viên *").selectOption({ label: "Hòa — Editor" });
+  await a.getByRole("button", { name: "Thêm vào phòng" }).click();
+  await expect(a.getByTestId("department-members")).toContainText("Hòa");
+  const row = a.getByTestId("department-members").locator("tr", { hasText: "Hòa" });
+  await row.getByRole("button", { name: "Đặt làm trưởng phòng" }).click();
+  await expect(a.getByText("Trưởng phòng: Hòa").first()).toBeVisible();
+  await a.getByTestId("department-members").locator("tr", { hasText: "Hòa" }).getByRole("button", { name: "Gỡ khỏi phòng" }).click();
+  await expect(a.getByTestId("department-members")).not.toContainText("Hòa");
+
+  const l = await login(browser, "leader@hanamedia.local");
+  await l.goto("/phong-ban");
+  await expect(l.getByTestId("department-cards")).toContainText("Bộ phận Edit");
+  await l.getByRole("link", { name: /Bộ phận Edit/ }).click();
+  await expect(l.getByTestId("department-members")).toContainText("Duy");
+  await expect(l.getByRole("button", { name: "Thêm vào phòng" })).toHaveCount(0);
+});
+
+test("Kanban cơ hội và lead: chuyển cột lưu lại; cột 'Thắng' tự động nên không chuyển tay", async ({ browser }) => {
+  const l = await login(browser, "leader@hanamedia.local");
+  await l.goto("/co-hoi");
+  await l.getByText("Thêm cơ hội").click();
+  await l.getByLabel("Tên cơ hội *").fill("Cơ hội Kanban E2E");
+  await l.getByLabel("Khách hàng *").selectOption({ index: 1 });
+  await l.getByRole("button", { name: "Thêm mới" }).click();
+  await expect(l.getByRole("heading", { name: "Cơ hội Kanban E2E" })).toBeVisible();
+  await l.goto("/co-hoi?view=kanban");
+  const col = (v: string) => l.locator(`[data-column="${v}"]`);
+  await expect(col("needs_analysis")).toContainText("Cơ hội Kanban E2E");
+  await l.getByLabel("Chuyển Cơ hội Kanban E2E đến").selectOption({ label: "Trình bày giải pháp" });
+  await expect(col("presentation")).toContainText("Cơ hội Kanban E2E");
+  await l.reload();
+  await expect(col("presentation")).toContainText("Cơ hội Kanban E2E");
+  expect(await l.getByLabel("Chuyển Cơ hội Kanban E2E đến").locator("option", { hasText: "Thắng" }).evaluate((o) => (o as HTMLOptionElement).disabled)).toBe(true);
+
+  await l.goto("/lead?view=kanban");
+  await expect(l.locator('[data-column="new"]')).toContainText("Lan Phạm");
+  await l.getByLabel(/Chuyển .*Lan Phạm.* đến/).selectOption({ label: "Đã liên hệ" });
+  await expect(l.locator('[data-column="contacted"]')).toContainText("Lan Phạm");
+  await l.goto("/lead?view=kanban");
+  await expect(l.locator('[data-column="contacted"]')).toContainText("Lan Phạm");
+});
+
+test("Ghi chú & hoạt động trên bản ghi, tìm kiếm nhanh, xuất CSV danh sách", async ({ browser }) => {
+  const l = await login(browser, "leader@hanamedia.local");
+  await l.goto("/tai-khoan");
+  await l.getByRole("link", { name: /Nông sản Xanh/ }).click();
+  await l.getByLabel("Ghi chú mới").fill("Khách muốn thêm gói quản lý kênh E2E");
+  await l.getByRole("button", { name: "Thêm ghi chú" }).click();
+  await expect(l.getByTestId("timeline")).toContainText("Khách muốn thêm gói quản lý kênh E2E");
+  await l.getByRole("button", { name: "Ghim" }).first().click();
+  await expect(l.getByText("Đã ghim")).toBeVisible();
+
+  await l.getByRole("searchbox", { name: "Tìm kiếm nhanh" }).fill("nông sản");
+  await l.getByRole("searchbox", { name: "Tìm kiếm nhanh" }).press("Enter");
+  await expect(l).toHaveURL(/\/tim-kiem\?q=/);
+  await expect(l.getByTestId("search-results")).toContainText("Công ty TNHH Nông sản Xanh");
+  await expect(l.getByTestId("search-results")).toContainText("DA0001");
+
+  const csv = await l.request.get("/xuat/tai-khoan");
+  expect(csv.status()).toBe(200);
+  expect(csv.headers()["content-type"]).toContain("text/csv");
+  const text = await csv.text();
+  expect(text.startsWith("﻿")).toBe(true);
+  expect(text).toContain("Tên công ty");
+  expect(text).toContain("Công ty TNHH Nông sản Xanh");
+  const filtered = await (await l.request.get("/xuat/tai-khoan?q=Mặt Trời")).text();
+  expect(filtered).toContain("Du lịch Mặt Trời");
+  expect(filtered).not.toContain("Nông sản Xanh");
+
+  const h = await login(browser, "hieu@hanamedia.local");
+  expect((await h.request.get("/xuat/tai-khoan")).status()).toBe(403);
+});

@@ -463,3 +463,147 @@ describe("Nhập sản phẩm từ Excel và sửa hợp đồng", () => {
     });
   });
 });
+
+const DEPT = { content: "00000000-0000-4000-b000-000000000002", edit: "00000000-0000-4000-b000-000000000003", admin: "00000000-0000-4000-b000-000000000001" };
+const LEAD1 = async (q: Q) => (await one<{ id: string }>(q, "select id from leads where company = 'Studio Sao Mai'")).id;
+
+describe("Phòng ban có nhân viên", () => {
+  it("chỉ quản trị sửa cơ cấu; thêm kiêm nhiệm không đổi phòng chính; gỡ phòng chính chuyển sang phòng còn lại", async () => {
+    await scenario(async (q, as) => {
+      await as(U.leader);
+      await expectError(q("select add_department_member($1, $2, null, true)", [DEPT.content, U.hoa]), /42501|quản trị/);
+      await as(U.admin);
+      await q("select add_department_member($1, $2, null, false)", [DEPT.content, U.hoa]); // Hòa (Edit) kiêm nhiệm Content
+      expect((await one<{ department_id: string }>(q, "select department_id from profiles where id = $1", [U.hoa])).department_id).toBe(DEPT.edit);
+      expect((await q("select 1 from user_departments_positions where user_id = $1 and department_id = $2", [U.hoa, DEPT.content])).length).toBe(1);
+      await q("select add_department_member($1, $2, null, true)", [DEPT.content, U.hoa]); // đặt Content làm phòng chính
+      expect((await one<{ department_id: string }>(q, "select department_id from profiles where id = $1", [U.hoa])).department_id).toBe(DEPT.content);
+      await q("select remove_department_member($1, $2)", [DEPT.content, U.hoa]);
+      const left = await one<{ department_id: string | null }>(q, "select department_id from profiles where id = $1", [U.hoa]);
+      expect(left.department_id).not.toBe(DEPT.content);
+      await expectError(q("select add_department_member($1, $2, null, true)", [DEPT.content, U.ctv]), "Cộng tác viên");
+      await expectError(q("select add_department_member($1, $2, null, true)", [DEPT.content, U.outsider]), /Không tìm thấy|P0002/);
+    });
+  });
+  it("đặt trưởng phòng; bỏ nhân viên khỏi phòng thì bỏ luôn chức trưởng phòng", async () => {
+    await scenario(async (q, as) => {
+      await as(U.admin);
+      await q("select set_department_manager($1, $2)", [DEPT.content, U.hieu]);
+      expect((await one<{ manager_id: string }>(q, "select manager_id from departments where id = $1", [DEPT.content])).manager_id).toBe(U.hieu);
+      await q("select remove_department_member($1, $2)", [DEPT.content, U.hieu]);
+      expect((await one<{ manager_id: string | null }>(q, "select manager_id from departments where id = $1", [DEPT.content])).manager_id).toBeNull();
+    });
+  });
+});
+
+describe("Ghi chú, lịch sử hoạt động và đổi trạng thái lead", () => {
+  it("ghi chú: người có quyền CRM ghi; kế toán chỉ đọc; Content không thấy; nội dung rỗng bị từ chối; xóa theo quyền", async () => {
+    await scenario(async (q, as) => {
+      await as(U.leader);
+      const lead = await LEAD1(q);
+      const note = (await one<{ add_note: string }>(q, "select add_note('lead', $1, 'Khách hẹn gặp thứ Sáu')", [lead])).add_note;
+      await expectError(q("select add_note('lead', $1, '   ')", [lead]), "Nhập nội dung");
+      await expectError(q("select add_note('lead', $1, 'x')", ["00000000-0000-4000-d000-0000000000ff"]), "Không tìm thấy");
+      await as(U.ketoan);
+      expect((await q("select id from crm_notes where entity_id = $1", [lead])).length).toBe(1); // xem được
+      await expectError(q("select add_note('lead', $1, 'kế toán ghi')", [lead]), /42501|quyền/);
+      await as(U.hieu);
+      expect(await q("select id from crm_notes")).toHaveLength(0);
+      await expectError(q("select add_note('lead', $1, 'Content ghi')", [lead]), /42501|quyền/);
+      await as(U.truongnhom);
+      await expectError(q("select delete_note($1)", [note]), /42501|người viết/);
+      await as(U.leader);
+      await q("select pin_note($1, true)", [note]);
+      await q("select delete_note($1)", [note]);
+      expect(await q("select id from crm_notes where id = $1", [note])).toHaveLength(0);
+    });
+  });
+  it("ghi chú dự án: thành viên ghi được, người ngoài dự án không", async () => {
+    await scenario(async (q, as) => {
+      await as(U.hieu);
+      await q("select add_note('project', $1, 'Cần thêm cảnh toàn cảnh')", [ID.pr1]);
+      await as(U.hoa);
+      await expectError(q("select add_note('project', $1, 'Tôi không thuộc dự án')", [ID.pr1]), /42501|dự án/);
+      expect(await q("select * from record_timeline('project', $1)", [ID.pr1])).toHaveLength(0);
+      await as(U.duy);
+      expect((await q("select * from record_timeline('project', $1)", [ID.pr1])).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+  it("dòng thời gian cơ hội gồm ghi chú, hoạt động đổi giai đoạn và công việc liên quan; cộng tác viên không xem được", async () => {
+    await scenario(async (q, as) => {
+      await as(U.leader);
+      await q("select set_opportunity_stage($1, 'presentation')", [ID.opp2]);
+      await q("select add_note('opportunity', $1, 'Khách muốn xem thêm demo')", [ID.opp2]);
+      await q("select save_task(null, 'Gọi lại khách', 'call', 'normal', null, null, null, 'opportunity', $1, array[$2]::uuid[])", [ID.opp2, U.leader]);
+      const t = await q("select kind, title, detail from record_timeline('opportunity', $1)", [ID.opp2]);
+      expect(new Set(t.map((x) => x.kind))).toEqual(new Set(["note", "audit", "task"]));
+      const a = t.find((x) => x.kind === "audit")!;
+      expect(a.title).toBe("opportunity.stage");
+      expect(a.detail).toMatchObject({ from: "negotiation", to: "presentation" });
+      await as(U.ctv);
+      expect(await q("select * from record_timeline('opportunity', $1)", [ID.opp2])).toHaveLength(0);
+    });
+  });
+  it("đổi trạng thái lead: không đổi sang 'đã chuyển đổi', không đổi lead đã chuyển đổi, Content bị từ chối", async () => {
+    await scenario(async (q, as) => {
+      await as(U.leader);
+      const lead = await LEAD1(q);
+      await q("select set_lead_status($1, 'qualified')", [lead]);
+      expect((await one<{ status: string }>(q, "select status from leads where id = $1", [lead])).status).toBe("qualified");
+      await expectError(q("select set_lead_status($1, 'converted')", [lead]), "Chuyển đổi lead");
+      await q("select convert_lead($1)", [lead]);
+      await expectError(q("select set_lead_status($1, 'new')", [lead]), "đã chuyển đổi");
+      await as(U.hieu);
+      await expectError(q("select set_lead_status($1, 'new')", [lead]), /42501|quyền/);
+    });
+  });
+});
+
+describe("Số liệu biểu đồ, báo cáo bán hàng và tìm kiếm", () => {
+  it("biểu đồ Dashboard chỉ có phần người xem được phép; báo cáo bán hàng chỉ cho người có quyền CRM", async () => {
+    await withUser(c, U.leader, async (q) => {
+      const d = (await one<{ dashboard_charts: Record<string, unknown> }>(q, "select dashboard_charts()")).dashboard_charts;
+      expect(Object.keys(d)).toEqual(expect.arrayContaining(["videos_by_stage", "videos_weekly", "headcount", "projects_by_stage", "opp_by_stage", "leads_by_status", "top_accounts", "revenue_expense"]));
+      expect((d.revenue_expense as unknown[]).length).toBe(6);
+      expect((d.videos_weekly as unknown[]).length).toBe(8);
+      const sr = (await one<{ sales_report: { kpi: Record<string, number>; forecast: unknown[] } }>(q, "select sales_report()")).sales_report;
+      expect(Number(sr.kpi.won_count)).toBeGreaterThanOrEqual(1);
+      expect(sr.forecast).toHaveLength(6);
+    });
+    await withUser(c, U.hieu, async (q) => {
+      const d = (await one<{ dashboard_charts: Record<string, unknown> }>(q, "select dashboard_charts()")).dashboard_charts;
+      expect(Object.keys(d).sort()).toEqual(["headcount", "projects_by_stage", "videos_by_stage", "videos_weekly"]);
+      expect((await one<{ sales_report: unknown }>(q, "select sales_report()")).sales_report).toBeNull();
+    });
+    await withUser(c, U.ketoan, async (q) => {
+      const d = (await one<{ dashboard_charts: Record<string, unknown> }>(q, "select dashboard_charts()")).dashboard_charts;
+      expect(d).toHaveProperty("revenue_expense");
+    });
+  });
+  it("số liệu nhân sự theo phòng ban không tính cộng tác viên; số video khớp bảng", async () => {
+    await withUser(c, U.leader, async (q) => {
+      const d = (await one<{ dashboard_charts: { headcount: { name: string; count: number }[]; videos_by_stage: { count: number }[] } }>(q, "select dashboard_charts()")).dashboard_charts;
+      const staff = (await one<{ n: string }>(q, "select count(*) n from profiles p where is_active and not app.has_role_of(p.id, 'collaborator')")).n;
+      expect(d.headcount.reduce((s, x) => s + Number(x.count), 0)).toBe(Number(staff));
+      const vids = (await one<{ n: string }>(q, "select count(*) n from videos")).n;
+      expect(d.videos_by_stage.reduce((s, x) => s + Number(x.count), 0)).toBe(Number(vids));
+    });
+  });
+  it("tìm kiếm theo quyền: Content không thấy khách hàng; người ngoài doanh nghiệp không thấy gì; từ khóa quá ngắn trả rỗng", async () => {
+    await withUser(c, U.leader, async (q) => {
+      const r = (await one<{ search_all: Record<string, { label: string }[]> }>(q, "select search_all('nông sản')")).search_all;
+      expect(r.accounts?.some((x) => x.label.includes("Nông sản Xanh"))).toBe(true);
+      const v = (await one<{ search_all: Record<string, { label: string }[]> }>(q, "select search_all('D0004')")).search_all;
+      expect(v.videos).toHaveLength(1);
+      expect((await one<{ search_all: Record<string, unknown> }>(q, "select search_all('x')")).search_all).toEqual({});
+    });
+    await withUser(c, U.hieu, async (q) => {
+      const r = (await one<{ search_all: Record<string, unknown> }>(q, "select search_all('nông sản')")).search_all;
+      expect(r).not.toHaveProperty("accounts");
+    });
+    await withUser(c, U.outsider, async (q) => {
+      const r = (await one<{ search_all: Record<string, unknown[]> }>(q, "select search_all('nông')")).search_all;
+      expect(Object.values(r).flat()).toHaveLength(0);
+    });
+  });
+});

@@ -10,10 +10,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EntityForm, DeleteEntityButton } from "@/components/entity-form";
 import { EntityRelated } from "@/components/entity-related";
 import { NoAccess } from "@/components/data-table";
+import { NotesPanel } from "@/components/notes-panel";
 
 type Props = { params: Promise<{ entity: string; id: string }> };
 
 export const metadata: Metadata = { title: "Chi tiết" };
+
+const NOTE_TYPES: Record<string, "lead" | "account" | "contact" | undefined> = { lead: "lead", account: "account", contact: "contact" };
 
 export default async function EntityDetailPage({ params }: Props) {
   const { entity: slug, id } = await params;
@@ -39,6 +42,7 @@ export default async function EntityDetailPage({ params }: Props) {
       <PageHeader title={e.titleOf(row) || e.singular} eyebrow={e.title} actions={canWrite ? <DeleteEntityButton entity={e.key} id={id} /> : null} />
       <Card><CardContent className="pt-5"><EntityForm entity={e.key} id={id} fields={fields} canWrite={canWrite && !(e.key === "lead" && row.is_converted === true)} /></CardContent></Card>
       <EntityRelated e={e} row={row} canWrite={canWrite} />
+      {NOTE_TYPES[e.key] ? <NotesPanel type={NOTE_TYPES[e.key]!} id={id} canWrite={canWrite} userId={ctx.user_id} people={L.people ?? []} isManager={ctx.roles.includes("manager") || ctx.roles.includes("system_admin")} /> : null}
     </div>
   );
 }
