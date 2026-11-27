@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { FileSpreadsheet, Plus } from "lucide-react";
+import { KIND_BY_SLUG } from "@/lib/crm-import";
 import { requireContext, can } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { entityBySlug, loadLookups, type Row } from "@/lib/entities";
@@ -37,7 +39,8 @@ export default async function EntityListPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-5">
-      <PageHeader title={e.title} description={e.description} eyebrow={`${rows.length} bản ghi`} />
+      <PageHeader title={e.title} description={e.description} eyebrow={`${rows.length} bản ghi`}
+        actions={canWrite && KIND_BY_SLUG[e.slug] ? <Link href={`/nhap-khach-hang/${e.slug}`} className="inline-flex h-10 items-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium hover:bg-muted"><FileSpreadsheet className="size-4" aria-hidden />Nhập từ Excel</Link> : null} />
       {e.creatable && canWrite ? (
         <Disclosure summary={`Thêm ${e.singular}`} icon={<Plus className="size-4" aria-hidden />}>
           <EntityForm entity={e.key} fields={e.fields(L)} />

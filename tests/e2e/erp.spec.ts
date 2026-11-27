@@ -165,3 +165,67 @@ test("lương: nhân sự tính & kiểm tra → kế toán duyệt & chi trả 
   const res = await e.request.get("/luong/xuat");
   expect(res.status()).toBe(404);
 });
+
+test("báo giá PDF: người có quyền tải được tệp PDF hợp lệ, người không có quyền CRM không thấy", async ({ browser }) => {
+  const l = await login(browser, "leader@hanamedia.local");
+  await l.goto("/bao-gia");
+  await l.getByRole("link", { name: /BG0001/ }).click();
+  await expect(l.getByRole("link", { name: "Tải PDF" })).toBeVisible();
+  const url = new URL(l.url()).pathname;
+  const res = await l.request.get(`${url}/pdf`);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("application/pdf");
+  const body = await res.body();
+  expect(body.subarray(0, 5).toString()).toBe("%PDF-");
+  expect(body.length).toBeGreaterThan(10_000);
+  const dl = await l.request.get(`${url}/pdf?tai=1`);
+  expect(dl.headers()["content-disposition"]).toContain('attachment; filename="BG0001.pdf"');
+
+  const e = await login(browser, "hoa@hanamedia.local");
+  expect((await e.request.get(`${url}/pdf`)).status()).toBe(404);
+});
+
+test("nhập khách hàng từ Excel: xem trước, loại trùng, nhập, nhập lại không tạo trùng", async ({ browser }) => {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Khách hàng");
+  ws.addRow(["Tên công ty", "Mã số thuế", "Điện thoại", "Email", "Ngành nghề", "Người phụ trách"]);
+  ws.addRow(["Công ty Excel Một", "0201020304", 901234500, "mot@excel.vn", "Du lịch", "Leader Sản xuất"]);
+  ws.addRow(["Công ty Excel Hai", "", "0987000111", "email-hong", "", ""]);
+  ws.addRow(["Công ty TNHH Nông sản Xanh", "0312345678", "", "", "", ""]); // đã có trong hệ thống
+  ws.addRow(["", "", "0900000000", "", "", ""]); // thiếu tên
+  const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+
+  const p = await login(browser, "leader@hanamedia.local");
+  await p.goto("/tai-khoan");
+  await p.getByRole("link", { name: "Nhập từ Excel" }).click();
+  const tpl = await p.request.get("/nhap-khach-hang/tai-khoan/mau");
+  expect(tpl.status()).toBe(200);
+  expect(tpl.headers()["content-type"]).toContain("spreadsheetml");
+
+  await p.getByLabel(/Tệp \.xlsx/).setInputFiles({ name: "khach.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer });
+  await p.getByRole("button", { name: "Đọc tệp và xem trước" }).click();
+  const sum = p.getByTestId("import-summary");
+  await expect(sum).toContainText("2 bản ghi mới");
+  await expect(sum).toContainText("1 trùng");
+  await expect(sum).toContainText("1 lỗi");
+  await expect(p.getByText(/email-hong.*không hợp lệ/)).toBeVisible();
+  await p.getByRole("button", { name: "Nhập 2 bản ghi" }).click();
+  await expect(p.getByTestId("import-done")).toContainText("Đã nhập 2 bản ghi");
+
+  await p.goto("/tai-khoan?q=Excel");
+  await expect(p.getByTestId("list-account")).toContainText("Công ty Excel Một");
+  await expect(p.getByTestId("list-account")).toContainText("Công ty Excel Hai");
+
+  // Nhập lại cùng tệp: tất cả đã có
+  await p.goto("/nhap-khach-hang/tai-khoan");
+  await p.getByLabel(/Tệp \.xlsx/).setInputFiles({ name: "khach.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer });
+  await p.getByRole("button", { name: "Đọc tệp và xem trước" }).click();
+  await expect(p.getByTestId("import-summary")).toContainText("0 bản ghi mới");
+  await expect(p.getByRole("button", { name: "Không có bản ghi mới" })).toBeDisabled();
+
+  // Người không có quyền CRM không vào được trang nhập
+  const h = await login(browser, "hieu@hanamedia.local");
+  await h.goto("/nhap-khach-hang/tai-khoan");
+  await expect(h).toHaveURL(/\/tai-khoan$/);
+});
