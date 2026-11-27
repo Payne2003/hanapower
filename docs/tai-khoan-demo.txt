@@ -1,0 +1,24 @@
+TÀI KHOẢN DEMO — HANA Studio
+Địa chỉ: https://hanapower.vercel.app
+
+Mật khẩu: là mật khẩu tạm bạn đặt khi chạy workflow "Dữ liệu demo (nạp / gỡ)" (chung cho cả 13 tài khoản).
+Chỉ đăng nhập được sau khi đã nạp dữ liệu demo. Gỡ demo thì các tài khoản này bị xóa.
+
+STT Email đăng nhập                     Họ tên                Vai trò
+----------------------------------------------------------------------------------------------------
+1   demo.quanly@hanamedia.demo          Nguyễn Hoàng Long     Quản lý + Quản trị hệ thống (xem được mọi mục)
+2   demo.truongnhom1@hanamedia.demo     Trần Minh Khoa        Trưởng nhóm Content
+3   demo.truongnhom2@hanamedia.demo     Lê Thu Hằng           Trưởng nhóm Edit
+4   demo.content1@hanamedia.demo        Phạm Quốc Bảo         Content
+5   demo.content2@hanamedia.demo        Đỗ Ngọc Anh           Content
+6   demo.content3@hanamedia.demo        Vũ Thị Lan            Content
+7   demo.editor1@hanamedia.demo         Hoàng Văn Tùng        Editor
+8   demo.editor2@hanamedia.demo         Bùi Thanh Hải         Editor
+9   demo.editor3@hanamedia.demo         Ngô Phương Thảo       Editor
+10  demo.ketoan@hanamedia.demo          Đặng Thị Mai          Kế toán
+11  demo.nhansu@hanamedia.demo          Lý Thu Trang          Nhân sự
+12  demo.ctv1@hanamedia.demo            Trịnh Công Sơn        Cộng tác viên (chỉ thấy việc được giao)
+13  demo.ctv2@hanamedia.demo            Mai Thị Hoa           Cộng tác viên (chỉ thấy việc được giao)
+
+Gợi ý: bắt đầu bằng demo.quanly@hanamedia.demo để xem toàn bộ hệ thống; dùng demo.ketoan / demo.nhansu / demo.ctv1 để xem giao diện theo từng vai trò.
+Nhớ gỡ dữ liệu demo sau khi xem xong (workflow → chọn go → gõ DEMO).
