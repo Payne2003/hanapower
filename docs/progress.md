@@ -34,7 +34,7 @@ Mục tiêu của đợt này: **có đủ khung menu / trang giống CRM Apollo
 |---|---|
 | `tsc` strict, ESLint, `next build` | Đạt |
 | Unit | 7/7 |
-| CSDL (Postgres thật, migration `0400`–`0860`) | **45/45** (18 quy trình video + 21 CRM / dự án / tài chính / cộng tác viên / lương) |
+| CSDL (Postgres thật, migration `0400`–`0860`) | **47/47** (18 quy trình video + 21 CRM / dự án / tài chính / cộng tác viên / lương) |
 | E2E Playwright | **14/14** (7 mới: mở mọi trang, tài khoản + chuyển đổi lead, cơ hội → báo giá → hợp đồng → dự án, quyền xem tiền của dự án, chi phí duyệt → thanh toán, cộng tác viên, lương) |
 
 ### Bổ sung: báo giá PDF và nhập khách hàng từ Excel (2026-11-27, migration `0840`–`0850`)
@@ -51,6 +51,12 @@ Mục tiêu của đợt này: **có đủ khung menu / trang giống CRM Apollo
 - Tái cấu trúc: phần dùng chung của PDF (font, đầu trang, bảng, tổng tiền, chữ ký, số trang) nằm ở `src/lib/pdf-common.ts`; báo giá và hợp đồng dùng chung.
 - `requireContext` thử lại tối đa 3 lần khi tầng API trả lỗi thoáng qua (đã gặp hai lần trong E2E: một lỗi 500 khi lấy thông tin người dùng, không tái hiện được lúc chạy riêng) và nêu rõ mã lỗi khi thông báo rỗng.
 - Kiểm thử: unit 34, CSDL 45, E2E 18; PDF hợp đồng đọc lại bằng `pdftotext` và xem ảnh trang.
+
+### Bổ sung: dữ liệu ảo để xem demo (`docs/demo-data.md`)
+
+- `node scripts/seed-demo.mjs --password … [--org …]` nạp bộ dữ liệu phủ **cả 54 bảng** (video, CRM, báo giá → hợp đồng → dự án, thu chi, tạm ứng, cộng tác viên, chấm công 3 tháng, 2 kỳ lương, thông báo, nhật ký…) cùng 13 tài khoản demo theo vai trò; `--remove` gỡ sạch (id đánh dấu `dede…`, không đụng dữ liệu thật). Chạy lại không nhân đôi. Có workflow tay "Dữ liệu demo (nạp / gỡ)" cho cloud.
+- Kiểm thử (`tests/db/zz-demo.test.ts`): mọi bảng có dữ liệu, nạp lại không đổi số dòng, gỡ về đúng trạng thái trước, báo giá / bảng lương cộng khớp, ràng buộc video thỏa; đã mở mọi trang bằng 6 tài khoản demo không lỗi.
+- Kiểm thử tổng: unit 34, CSDL 47, E2E 18.
 
 ### Giới hạn đã biết (chưa làm hoặc làm mức cơ bản)
 
