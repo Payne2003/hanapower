@@ -338,3 +338,76 @@ describe("Lương", () => {
     });
   });
 });
+
+describe("Nhập khách hàng từ Excel (import_crm) và thông tin công ty", () => {
+  it("nhập tài khoản: bỏ trùng tên / MST, gán đúng người phụ trách; người không có quyền bị từ chối", async () => {
+    await scenario(async (q, as) => {
+      await as(U.hieu);
+      await expectError(q(`select import_crm('accounts', '[{"name":"X"}]'::jsonb)`), /42501|quyền/);
+      await as(U.leader);
+      const rows = JSON.stringify([
+        { name: "Công ty Nhập 1", tax_code: "0777777777", phones: ["0901111222"], emails: ["A@X.vn"], owner_id: U.hoa },
+        { name: "  công  ty nhập 1 " }, // trùng tên (chuẩn hóa khoảng trắng / hoa thường) với dòng trước
+        { name: "Công ty Nông sản Xanh khác", tax_code: "0312345678" }, // trùng MST với dữ liệu mẫu
+        { name: "" },
+      ]);
+      const r = await one<{ import_crm: { inserted: number; skipped: number } }>(q, "select import_crm('accounts', $1::jsonb)", [rows]);
+      expect(r.import_crm).toMatchObject({ inserted: 1, skipped: 3 });
+      const a = await one<{ owner_id: string; emails: string[] }>(q, "select owner_id, emails from accounts where name = 'Công ty Nhập 1'");
+      expect(a.owner_id).toBe(U.hoa);
+      expect(a.emails).toEqual(["a@x.vn"]);
+      const again = await one<{ import_crm: { inserted: number } }>(q, "select import_crm('accounts', $1::jsonb)", [rows]);
+      expect(again.import_crm.inserted).toBe(0); // nhập lại cùng tệp an toàn
+    });
+  });
+
+  it("nhập liên hệ: gắn công ty có sẵn, bỏ tham chiếu sai, tự tạo công ty mới khi được phép", async () => {
+    await scenario(async (q, as) => {
+      await as(U.leader);
+      const rows = JSON.stringify([
+        { last_name: "Nguyễn Thu", first_name: "Hà", account_id: ID.acc1, emails: ["ha.thu2@x.vn"] },
+        { last_name: "Lê", first_name: "Bình", account_name: "Công ty Hoàn Toàn Mới" },
+        { last_name: "Phạm", first_name: "An", account_id: "00000000-0000-4000-d000-0000000000ff", owner_id: U.outsider },
+      ]);
+      const none = await one<{ import_crm: { inserted: number; accounts_created: number } }>(q, "select import_crm('contacts', $1::jsonb, false)", [rows]);
+      expect(none.import_crm).toMatchObject({ inserted: 3, accounts_created: 0 });
+    });
+    await scenario(async (q, as) => {
+      await as(U.leader);
+      const rows = JSON.stringify([{ last_name: "Lê", first_name: "Bình", account_name: "Công ty Hoàn Toàn Mới" }, { last_name: "Võ", first_name: "Cường", account_name: "công ty hoàn toàn mới" }]);
+      const r = await one<{ import_crm: { inserted: number; accounts_created: number } }>(q, "select import_crm('contacts', $1::jsonb, true)", [rows]);
+      expect(r.import_crm).toMatchObject({ inserted: 2, accounts_created: 1 });
+      const c = await q("select account_id from contacts where first_name in ('Bình','Cường')");
+      expect(new Set(c.map((x) => x.account_id)).size).toBe(1);
+      const own = await q("select owner_id from contacts where first_name = 'Cường'");
+      expect(own[0]!.owner_id).toBe(U.leader);
+    });
+  });
+
+  it("nhập lead: bỏ trùng email / điện thoại với lead có sẵn; trạng thái và mức độ đúng kiểu", async () => {
+    await scenario(async (q, as) => {
+      await as(U.leader);
+      const rows = JSON.stringify([
+        { last_name: "Quang", first_name: "Trần", phones: ["0912000111"] }, // trùng điện thoại với lead mẫu "Studio Sao Mai"
+        { last_name: "Nam", first_name: "Hoàng", company: "Studio X", status: "contacted", rating: "hot", emails: ["nam@x.vn"] },
+      ]);
+      const r = await one<{ import_crm: { inserted: number; skipped: number } }>(q, "select import_crm('leads', $1::jsonb)", [rows]);
+      expect(r.import_crm).toMatchObject({ inserted: 1, skipped: 1 });
+      const l = await one<{ status: string; rating: string }>(q, "select status, rating from leads where company = 'Studio X'");
+      expect(l).toMatchObject({ status: "contacted", rating: "hot" });
+      await expectError(q(`select import_crm('khac', '[]'::jsonb)`), "không hợp lệ");
+    });
+  });
+
+  it("thông tin công ty: chỉ quản trị sửa; báo giá PDF đọc được qua RLS", async () => {
+    await scenario(async (q, as) => {
+      await as(U.leader);
+      await expectError(q("select save_org_profile('a','b','c@d.vn','e','f','g')"), /42501|quản trị/);
+      await as(U.admin);
+      await expectError(q("select save_org_profile('a','b','không-phải-email','e','f','g')"), "Email");
+      await q("select save_org_profile('Quận 7', '0901', 'lienhe@hanamedia.vn', 'hanamedia.vn', '0312345678', 'Vietcombank')");
+      const o = await one<{ address: string; bank_info: string }>(q, "select address, bank_info from organizations");
+      expect(o).toMatchObject({ address: "Quận 7", bank_info: "Vietcombank" });
+    });
+  });
+});

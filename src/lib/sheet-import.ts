@@ -44,7 +44,7 @@ export function norm(s: unknown): string {
     .toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function toISODate(v: unknown): string | null {
+export function toISODate(v: unknown): string | null {
   if (v === null || v === undefined || v === "") return null;
   if (v instanceof Date && !isNaN(v.getTime())) {
     return `${v.getUTCFullYear()}-${String(v.getUTCMonth() + 1).padStart(2, "0")}-${String(v.getUTCDate()).padStart(2, "0")}`;
@@ -61,7 +61,7 @@ function toISODate(v: unknown): string | null {
   return null;
 }
 
-function cellText(v: unknown): string {
+export function cellText(v: unknown): string {
   if (v === null || v === undefined) return "";
   if (typeof v === "object") {
     const o = v as { text?: unknown; hyperlink?: unknown; richText?: { text: string }[]; result?: unknown };

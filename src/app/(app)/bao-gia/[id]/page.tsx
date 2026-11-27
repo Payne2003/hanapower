@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download, FileText } from "lucide-react";
 import { requireContext, can } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { oppInfo } from "@/lib/crm-data";
@@ -47,7 +47,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-5">
       <Link href="/bao-gia" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden />Báo giá</Link>
-      <PageHeader title={`${q.code} · phiên bản ${q.version}`} eyebrow={info ? <span>Cơ hội: <Link href={`/co-hoi/${info.id}`} className="text-primary hover:underline">{info.name}</Link> · {info.account_name}</span> : undefined} />
+      <PageHeader title={`${q.code} · phiên bản ${q.version}`} actions={<><a href={`/bao-gia/${id}/pdf`} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium hover:bg-muted"><FileText className="size-4" aria-hidden />Xem PDF</a><a href={`/bao-gia/${id}/pdf?tai=1`} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover"><Download className="size-4" aria-hidden />Tải PDF</a></>} eyebrow={info ? <span>Cơ hội: <Link href={`/co-hoi/${info.id}`} className="text-primary hover:underline">{info.name}</Link> · {info.account_name}</span> : undefined} />
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Trạng thái" value={badge(QUOTE_STATUS, st)} tone="sky" />
         <StatCard label="Tạm tính" value={money(q.subtotal as number)} tone="slate" />

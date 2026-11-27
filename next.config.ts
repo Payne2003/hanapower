@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Cho phép tải tệp Excel (nhập dữ liệu) tối đa 10 MB qua server action.
   experimental: { serverActions: { bodySizeLimit: "10mb" } },
+  // PDF báo giá: pdfkit đọc tệp dữ liệu của chính nó và font nhúng lúc chạy — phải được đóng gói cùng hàm serverless / bản standalone.
+  serverExternalPackages: ["pdfkit"],
+  outputFileTracingIncludes: {
+    "/bao-gia/[id]/pdf": ["./assets/fonts/**/*", "./node_modules/pdfkit/js/data/**/*"],
+  },
   async headers() {
     return [
       {

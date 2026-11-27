@@ -34,15 +34,21 @@ Mục tiêu của đợt này: **có đủ khung menu / trang giống CRM Apollo
 |---|---|
 | `tsc` strict, ESLint, `next build` | Đạt |
 | Unit | 7/7 |
-| CSDL (Postgres thật, migration `0400`–`0820`) | **39/39** (18 quy trình video + 21 CRM / dự án / tài chính / cộng tác viên / lương) |
+| CSDL (Postgres thật, migration `0400`–`0850`) | **43/43** (18 quy trình video + 21 CRM / dự án / tài chính / cộng tác viên / lương) |
 | E2E Playwright | **14/14** (7 mới: mở mọi trang, tài khoản + chuyển đổi lead, cơ hội → báo giá → hợp đồng → dự án, quyền xem tiền của dự án, chi phí duyệt → thanh toán, cộng tác viên, lương) |
+
+### Bổ sung: báo giá PDF và nhập khách hàng từ Excel (2026-11-27, migration `0840`–`0850`)
+
+- **Báo giá PDF** (`/bao-gia/<id>/pdf`, nút "Xem PDF" / "Tải PDF"): A4, font Be Vietnam Pro nhúng trong ứng dụng (`assets/fonts`), đầu trang công ty (Cài đặt → Thông tin công ty), khối khách hàng, bảng hạng mục tự sang trang và lặp tiêu đề, tạm tính / thuế / tổng, **số tiền bằng chữ**, điều khoản, thông tin thanh toán, ô chữ ký, số trang. Quyền xem theo RLS (không có quyền CRM → 404). Đã cấu hình để font và dữ liệu của `pdfkit` được đóng gói cùng hàm serverless / bản Docker.
+- **Nhập Excel / CSV** cho **Tài khoản, Liên hệ, Lead** (`/nhap-khach-hang/<loại>`, nút "Nhập từ Excel" ở mỗi danh sách; có **tệp mẫu** để tải): nhận cột theo tên (có / không dấu, thứ tự tùy ý, bỏ qua dòng tiêu đề phụ phía trên), chuẩn hóa số điện thoại (+84, mất số 0 đầu do Excel), email, ngày sinh, số tiền, tách họ tên; khớp Ngành / Nguồn / Người phụ trách / Công ty theo tên; **xem trước** từng dòng (mới / trùng / lỗi + cảnh báo) rồi mới ghi; loại trùng với dữ liệu có sẵn **và** trong tệp (tài khoản: MST hoặc tên; liên hệ: email hoặc họ tên + công ty; lead: email, điện thoại hoặc họ tên + công ty); CSDL kiểm tra lại quyền và trùng trong một giao dịch; liên hệ có thể tự tạo công ty chưa có. Nhập lại cùng một tệp không tạo trùng.
+- Kiểm thử thêm: unit 28 (số tiền bằng chữ, PDF nhiều trang đọc lại bằng `pdftotext`, chuẩn hóa / kế hoạch nhập, đọc xlsx và csv), CSDL 43 (nhập tài khoản / liên hệ / lead, quyền, thông tin công ty), E2E 16 (tải PDF hợp lệ; nhập Excel có xem trước, trùng, lỗi, nhập lại).
 
 ### Giới hạn đã biết (chưa làm hoặc làm mức cơ bản)
 
 - **Thuế TNCN không tự tính** — kế toán nhập tay thành một dòng "Thuế TNCN" (biểu thuế cần cập nhật theo quy định hiện hành). Tỷ lệ bảo hiểm mặc định 10,5% chỉnh được ở Bảng lương → Thiết lập; cần kế toán xác nhận.
 - Lãi / lỗ dự án **chưa gồm lương** và chi phí chung không gắn dự án.
-- Báo giá không có bản in / PDF; hợp đồng chưa có tệp đính kèm; chưa có phụ lục / thay đổi giá trị hợp đồng; chưa có tồn kho / giao hàng cho đơn hàng.
-- Các danh mục CRM chỉ có tìm kiếm + lọc 1 cột; chưa có nhập từ Excel (chỉ video), chưa có theo dõi người theo dõi (follower), lịch sử hoạt động từng khách, nhắc việc tự động gửi (đã lưu `reminder_at`, chưa có tiến trình gửi).
+- Hợp đồng chưa có bản PDF / tệp đính kèm; chưa có phụ lục / thay đổi giá trị hợp đồng; chưa có tồn kho / giao hàng cho đơn hàng.
+- Các danh mục CRM chỉ có tìm kiếm + lọc 1 cột; chưa có theo dõi người theo dõi (follower), lịch sử hoạt động từng khách, nhắc việc tự động gửi (đã lưu `reminder_at`, chưa có tiến trình gửi).
 - Xuất dữ liệu dạng CSV UTF-8 (mở bằng Excel); số tài khoản có số 0 đầu có thể bị Excel cắt — nhập cột dạng Text.
 - Chưa thử trên Windows thật / Vercel thật với các migration mới: cần chạy workflow "Cập nhật cơ sở dữ liệu cloud" sau khi gộp.
 

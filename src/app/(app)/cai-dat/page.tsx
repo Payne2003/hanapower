@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PasswordForm } from "@/components/password-form";
 import { ROLE_LABEL } from "@/lib/labels";
 import { PageHeader } from "@/components/ui/page-header";
+import { RpcForm } from "@/components/rpc-form";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Cài đặt" };
 
@@ -13,6 +15,8 @@ export default async function SettingsPage() {
   const ctx = await requireContext();
   const canChannels = can(ctx, "channels.manage");
   const channels = canChannels ? await getChannels() : [];
+  const canOrg = can(ctx, "users.manage");
+  const org = canOrg ? (await (await createSupabaseServerClient()).from("organizations").select("address, phone, email, website, tax_code, bank_info").eq("id", ctx.org_id).maybeSingle()).data : null;
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5">
       <PageHeader title="Cài đặt" description="Tài khoản, kênh phát hành và bảo mật." />
@@ -28,6 +32,20 @@ export default async function SettingsPage() {
           </dl>
         </CardContent>
       </Card>
+      {canOrg ? (
+        <Card>
+          <CardHeader><CardTitle>Thông tin công ty</CardTitle><CardDescription>In trên báo giá PDF gửi khách hàng.</CardDescription></CardHeader>
+          <CardContent>
+            <RpcForm rpc="save_org_profile" submitLabel="Lưu thông tin công ty" revalidate={["/cai-dat"]} columns={2}
+              fields={[
+                { name: "p_address", label: "Địa chỉ", wide: true, defaultValue: org?.address ?? "" },
+                { name: "p_phone", label: "Điện thoại", defaultValue: org?.phone ?? "" }, { name: "p_email", label: "Email", type: "email", defaultValue: org?.email ?? "" },
+                { name: "p_website", label: "Website", defaultValue: org?.website ?? "" }, { name: "p_tax_code", label: "Mã số thuế", defaultValue: org?.tax_code ?? "" },
+                { name: "p_bank_info", label: "Tài khoản ngân hàng (in cuối báo giá)", type: "textarea", defaultValue: org?.bank_info ?? "", placeholder: "Vietcombank – 0011223344 – CÔNG TY TNHH …" },
+              ]} />
+          </CardContent>
+        </Card>
+      ) : null}
       {canChannels ? (
         <Card>
           <CardHeader><CardTitle>Kênh phát hành</CardTitle><CardDescription>Kênh dùng khi tạo video và ghi nhận đăng.</CardDescription></CardHeader>
