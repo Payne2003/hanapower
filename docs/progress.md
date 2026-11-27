@@ -189,3 +189,7 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml -f docker-com
 1. Giai đoạn 4: báo cáo tuần (tổng hợp từ báo cáo ngày, nhận xét, kế hoạch tuần sau, bản chụp khi gửi); thông báo trong ứng dụng (giao việc, chờ duyệt, bị trả lại, sắp tới hạn); bình luận và tệp đính kèm công việc (bucket riêng + chính sách theo bản ghi); giao diện quản trị tài khoản/phòng ban.
 2. Giai đoạn 5: chat 1–1, nhóm, kênh dự án; lưu Postgres trước, Realtime kênh riêng chỉ báo cập nhật; tải bù khi kết nối lại; kiểm thử đọc chat sau khi bị xóa khỏi nhóm.
 3. Giai đoạn 6: service worker, trang ngoại tuyến, kiểm tra cài đặt Edge.
+
+## Nâng cấp Dự án và Thu chi & công nợ (2026-11-27)
+
+Xem `docs/du-an-thu-chi.md` (đối chiếu tên tham chiếu ↔ schema thật, luồng ghi nhận thu một cửa, kỳ tài chính / khóa kỳ / đối chiếu, báo cáo, quyền, việc còn lại). Điểm chính: nhiều quản lý / dự án, tiến độ + rủi ro (có chữ + lý do), danh sách Bảng / Kanban / Dòng thời gian với chế độ xem nhanh, cột chọn được, góc nhìn đã lưu, xem nhanh bên phải; tab Thanh toán với lịch mốc, % theo hợp đồng và phần chưa phân bổ; **ghi nhận thu một luồng cho mọi màn hình** (idempotent, an toàn khi đồng thời); thu chi có Tổng quan, Khoản thu, Khoản chi, Phải thu theo tuổi nợ, Kỳ tài chính (ghi chú, chốt kỳ, đối chiếu), Chứng từ nhiều tệp, Báo cáo theo dự án / khách hàng / tháng / phòng ban / nguồn / loại; CSV theo bộ lọc; nhắc việc mỗi sự kiện một lần. Kiểm thử: `tests/db/projects-finance.test.ts` (22 bài), `tests/e2e/projects-finance.spec.ts` (7 bài).

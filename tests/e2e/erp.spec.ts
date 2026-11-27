@@ -76,17 +76,19 @@ test("cơ hội → báo giá → hợp đồng → kích hoạt → dự án", 
   await p.getByRole("button", { name: "Tạo dự án", exact: true }).click();
   await expect(p).toHaveURL(/\/du-an\//);
   await expect(p.getByRole("heading", { name: /DA0002/ })).toBeVisible();
-  await p.getByRole("link", { name: "Nghiệm thu & thanh toán" }).click();
-  await expect(p.getByText("Nghiệm thu & thanh toán").first()).toBeVisible();
+  await p.getByTestId("tab-thanh-toan").click();
+  await expect(p.getByText("Lịch thanh toán").first()).toBeVisible();
 });
 
 test("dự án: thành viên không thấy tiền; người ngoài không thấy dự án", async ({ browser }) => {
   const m = await login(browser, "hieu@hanamedia.local");
   await m.goto("/du-an");
-  await expect(m.getByTestId("list-projects")).toContainText("DA0001");
-  await m.getByRole("link", { name: /DA0001/ }).click();
-  await expect(m.getByRole("link", { name: "Nghiệm thu & thanh toán" })).toHaveCount(0);
-  await expect(m.getByRole("link", { name: "Lãi / lỗ" })).toHaveCount(0);
+  await expect(m.getByTestId("list-projects")).toContainText("Chiến dịch video giới thiệu nông sản Xanh");
+  await m.getByRole("link", { name: /Xem nhanh Chiến dịch/ }).click(); // xem nhanh bên phải
+  await expect(m.getByTestId("quick-view")).not.toContainText("Mốc thu kế tiếp"); // thành viên không thấy tiền
+  await m.getByTestId("open-project").click();
+  await expect(m.getByTestId("tab-thanh-toan")).toHaveCount(0);
+  await expect(m.getByTestId("tab-tai-chinh")).toHaveCount(0);
   const o = await login(browser, "hoa@hanamedia.local");
   await o.goto("/du-an");
   await expect(o.getByText("Chưa có dự án nào bạn tham gia")).toBeVisible();
@@ -96,16 +98,17 @@ test("chi phí: nhân viên đề nghị → kế toán duyệt → thanh toán"
   const e = await login(browser, "duy@hanamedia.local");
   await e.goto("/thu-chi");
   await e.getByText("Đề nghị chi / ghi nhận chi phí").click();
-  await e.getByLabel("Số tiền (₫) *").fill("750000");
-  await e.getByLabel("Dự án").selectOption({ index: 1 }); // dự án DA0001 mà Duy là thành viên
-  await e.getByLabel("Nội dung").fill("Mua thẻ nhớ E2E");
-  await e.getByRole("button", { name: "Gửi duyệt" }).click();
+  const form = e.locator("form").filter({ has: e.getByRole("button", { name: "Gửi duyệt", exact: true }) });
+  await form.getByLabel("Số tiền (₫) *").fill("750000");
+  await form.getByLabel("Dự án", { exact: true }).selectOption({ index: 1 }); // dự án DA0001 mà Duy là thành viên
+  await form.getByLabel("Nội dung", { exact: true }).fill("Mua thẻ nhớ E2E");
+  await form.getByRole("button", { name: "Gửi duyệt", exact: true }).click();
   await expect(e.getByText("Đã lưu.")).toBeVisible();
   await expect(e.getByTestId("list-expenses")).toContainText("Mua thẻ nhớ E2E");
   await expect(e.getByTestId("list-expenses").locator("tr", { hasText: "Mua thẻ nhớ E2E" }).getByRole("button", { name: "Duyệt" })).toHaveCount(0);
 
   const k = await login(browser, "ketoan@hanamedia.local");
-  await k.goto("/thu-chi");
+  await k.goto("/thu-chi?tab=chi");
   const row = k.getByTestId("list-expenses").locator("tr", { hasText: "Mua thẻ nhớ E2E" });
   await row.getByRole("button", { name: "Duyệt", exact: true }).click();
   await expect(row.getByRole("button", { name: "Đã thanh toán" })).toBeVisible();

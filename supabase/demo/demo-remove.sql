@@ -7,6 +7,10 @@ begin
   delete from public.payroll_periods where id::text like 'dede%';          -- kéo theo dòng lương, khoản lương
   delete from public.project_bonuses where id::text like 'dede%';
   delete from public.freelance_assignments where id::text like 'dede%';
+  delete from public.finance_files where id::text like 'dede%';              -- kéo theo nội dung tệp
+  delete from public.finance_periods where org_id = v_org and note like 'Dữ liệu demo%';
+  delete from public.finance_reminders where kind = 'demo' and ref_id::text like 'dede%';
+  delete from public.saved_views where id::text like 'dede%';
   delete from public.expenses where id::text like 'dede%';
   delete from public.advances where id::text like 'dede%';
   delete from public.incomes where id::text like 'dede%';

@@ -532,6 +532,61 @@ begin
     end loop;
   end if;
 
+  -- ---------------- Nâng cấp Dự án / Thu chi: tiến độ, rủi ro, quản lý phụ, tài liệu, chứng từ, kỳ tài chính, góc nhìn -----------------
+  for k in 1..5 loop
+    p_id := pg_temp.did(13, k);
+    update public.projects set progress = (array[45, 70, 100, 90, 10])[k], risk_level = (array['medium', 'low', 'low', 'high', 'low'])[k]::public.risk_level,
+      risk_note = case k when 1 then 'Khách chậm duyệt kịch bản tập 2' when 4 then 'Mốc nghiệm thu trễ so với kế hoạch' end,
+      payment_terms = 'Chuyển khoản 2 đợt: 50% tạm ứng, 50% sau nghiệm thu' where id = p_id;
+    insert into public.project_managers (org_id, project_id, user_id) values (v_org, p_id, usr[1]) on conflict do nothing;
+    insert into public.project_files (id, org_id, project_id, kind, name, mime, size_bytes, uploaded_by) values
+      (pg_temp.did(41, k * 10 + 1), v_org, p_id, 'plan', 'ke-hoach-san-xuat.txt', 'text/plain', 56, usr[2]),
+      (pg_temp.did(41, k * 10 + 2), v_org, p_id, 'quote', 'bao-gia-da-duyet.txt', 'text/plain', 56, usr[2]) on conflict (id) do nothing;
+    insert into public.project_file_blobs (file_id, content) values
+      (pg_temp.did(41, k * 10 + 1), convert_to('Tài liệu demo — kế hoạch sản xuất, không phải tài liệu thật.', 'UTF8')),
+      (pg_temp.did(41, k * 10 + 2), convert_to('Tài liệu demo — báo giá đã duyệt, không phải tài liệu thật.', 'UTF8')) on conflict do nothing;
+  end loop;
+  -- phòng ban / người phụ trách của chính giao dịch (báo cáo theo phòng ban dùng các cột này)
+  update public.incomes set department_id = d_id[1], owner_id = usr[10] where id::text like 'dede%' and department_id is null;
+  update public.expenses e set department_id = d_id[3 + (hashtext(e.id::text) & 1)] where e.id::text like 'dede%' and e.department_id is null;
+  -- chứng từ: phiếu thu cho các khoản thu theo mốc, hóa đơn cho khoản chi đã duyệt (ba tệp cho một khoản thu để thử "một khoản, nhiều chứng từ")
+  for k in 1..4 loop
+    for j in 1..2 loop
+      if exists (select 1 from public.incomes where id = pg_temp.did(15, k * 10 + j)) then
+        insert into public.finance_files (id, org_id, kind, ref_id, name, mime, size_bytes, uploaded_by)
+        values (pg_temp.did(42, k * 10 + j), v_org, 'income', pg_temp.did(15, k * 10 + j), 'phieu-thu-' || k || j || '.txt', 'text/plain', 52, usr[10]) on conflict (id) do nothing;
+        insert into public.finance_file_blobs (file_id, content) values (pg_temp.did(42, k * 10 + j), convert_to('Chứng từ demo — phiếu thu, không phải chứng từ thật.', 'UTF8')) on conflict do nothing;
+      end if;
+    end loop;
+  end loop;
+  for i in 1..46 loop
+    if i % 2 = 0 and exists (select 1 from public.expenses where id = pg_temp.did(16, i) and approval = 'approved') then
+      insert into public.finance_files (id, org_id, kind, ref_id, name, mime, size_bytes, uploaded_by)
+      values (pg_temp.did(42, 100 + i), v_org, 'expense', pg_temp.did(16, i), 'hoa-don-' || i || '.txt', 'text/plain', 52, usr[10]) on conflict (id) do nothing;
+      insert into public.finance_file_blobs (file_id, content) values (pg_temp.did(42, 100 + i), convert_to('Chứng từ demo — hóa đơn, không phải chứng từ thật.', 'UTF8')) on conflict do nothing;
+    end if;
+  end loop;
+  insert into public.finance_files (id, org_id, kind, ref_id, name, mime, size_bytes, uploaded_by)
+  select pg_temp.did(42, 300 + g), v_org, 'income', pg_temp.did(15, 11), 'chung-tu-bo-sung-' || g || '.txt', 'text/plain', 52, usr[10]
+  from generate_series(1, 2) g where exists (select 1 from public.incomes where id = pg_temp.did(15, 11)) on conflict (id) do nothing;
+  insert into public.finance_file_blobs (file_id, content)
+  select pg_temp.did(42, 300 + g), convert_to('Chứng từ demo — bổ sung, không phải chứng từ thật.', 'UTF8') from generate_series(1, 2) g
+  where exists (select 1 from public.finance_files where id = pg_temp.did(42, 300 + g)) on conflict do nothing;
+  -- kỳ tài chính: một kỳ có ghi chú, một kỳ đã chốt (snapshot tổng tại thời điểm chốt)
+  insert into public.finance_periods (org_id, year, month, note)
+  select v_org, extract(year from x.pd)::int, extract(month from x.pd)::int, 'Dữ liệu demo — đã đối chiếu sao kê ngân hàng tháng này'
+  from (select (date_trunc('month', v_today) - interval '1 month')::date pd) x on conflict do nothing;
+  insert into public.finance_periods (org_id, year, month, note, closed_at, closed_by, closed_income, closed_expense)
+  select v_org, extract(year from x.pd)::int, extract(month from x.pd)::int, 'Dữ liệu demo — kỳ đã chốt', now(), usr[10],
+    coalesce((select sum(amount) from public.incomes where org_id = v_org and status = 'confirmed' and date_trunc('month', occurred_on) = x.pd), 0),
+    coalesce((select sum(amount) from public.expenses where org_id = v_org and deleted_at is null and approval = 'approved' and date_trunc('month', occurred_on) = x.pd), 0)
+  from (select (date_trunc('month', v_today) - interval '2 months')::date pd) x on conflict do nothing;
+  insert into public.finance_reminders (org_id, kind, ref_id) values (v_org, 'demo', pg_temp.did(14, 12)) on conflict do nothing;
+  insert into public.saved_views (id, org_id, user_id, scope, name, params) values
+    (pg_temp.did(44, 1), v_org, usr[1], 'project', 'Rủi ro cao', 'view=risk&sort=end'),
+    (pg_temp.did(44, 2), v_org, usr[1], 'project', 'Đến hạn thu 7 ngày', 'view=pay7'),
+    (pg_temp.did(44, 3), v_org, usr[10], 'finance', 'Thiếu chứng từ', 'tab=chung-tu&voucher=missing') on conflict do nothing;
+
   -- ---------------- Thông báo, nhật ký -----------------
   if not exists (select 1 from public.audit_logs where action = 'demo.seed' and org_id = v_org) then
   for i in 1..13 loop
