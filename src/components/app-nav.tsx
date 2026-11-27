@@ -3,7 +3,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, Clapperboard, FileText, Bell, MessagesSquare, Users, Settings, Menu, X, LogOut,
+  LayoutDashboard, Clapperboard, FileText, Bell, MessagesSquare, Users, Settings, Menu, X, LogOut, UserPlus, Building2, Contact, Target,
+  FileSignature, ScrollText, ShoppingCart, Package, Tags, Ruler, BookOpen, FolderKanban, Handshake, Wallet, CheckSquare, Network,
+  BadgeCheck, CalendarCheck, Banknote, Briefcase, Layers, Megaphone, Factory,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/page-header";
@@ -16,12 +18,36 @@ const ICONS = {
   chat: MessagesSquare,
   people: Users,
   settings: Settings,
+  lead: UserPlus,
+  account: Building2,
+  contact: Contact,
+  opportunity: Target,
+  quote: FileSignature,
+  contract: ScrollText,
+  order: ShoppingCart,
+  product: Package,
+  category: Tags,
+  unit: Ruler,
+  pricebook: BookOpen,
+  project: FolderKanban,
+  freelancer: Handshake,
+  finance: Wallet,
+  task: CheckSquare,
+  department: Network,
+  position: BadgeCheck,
+  attendance: CalendarCheck,
+  payroll: Banknote,
+  work: Briefcase,
+  layers: Layers,
+  source: Megaphone,
+  industry: Factory,
 } as const;
 
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; badge?: number };
+export type NavGroup = { label?: string; items: NavItem[] };
 
-export function AppNav({ items, orgName, userName, roleLabel, logoutAction }: {
-  items: NavItem[];
+export function AppNav({ groups, orgName, userName, roleLabel, logoutAction }: {
+  groups: NavGroup[];
   orgName: string;
   userName: string;
   roleLabel: string;
@@ -51,31 +77,36 @@ export function AppNav({ items, orgName, userName, roleLabel, logoutAction }: {
   );
 
   const nav = (
-    <nav aria-label="Điều hướng chính" className="flex flex-1 flex-col gap-0.5">
-      {items.map((it) => {
-        const Icon = ICONS[it.icon];
-        const active = isActive(it.href);
-        return (
-          <Link
-            key={it.href}
-            href={it.href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-              active ? "bg-primary-soft text-primary" : "text-foreground/75 hover:bg-muted hover:text-foreground",
-            )}
-          >
-            {active ? <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary" aria-hidden /> : null}
-            <Icon className={cn("size-[18px]", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} aria-hidden />
-            <span className="flex-1">{it.label}</span>
-            {it.badge ? (
-              <span className="min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-center text-[11px] leading-none text-primary-foreground" aria-label={`${it.badge} mục chưa đọc`}>
-                {it.badge}
-              </span>
-            ) : null}
-          </Link>
-        );
-      })}
+    <nav aria-label="Điều hướng chính" className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
+      {groups.map((g, gi) => (
+        <div key={g.label ?? gi} className="flex flex-col gap-0.5">
+          {g.label ? <p className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">{g.label}</p> : null}
+          {g.items.map((it) => {
+            const Icon = ICONS[it.icon];
+            const active = isActive(it.href);
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  active ? "bg-primary-soft text-primary" : "text-foreground/75 hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {active ? <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary" aria-hidden /> : null}
+                <Icon className={cn("size-[17px]", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} aria-hidden />
+                <span className="flex-1">{it.label}</span>
+                {it.badge ? (
+                  <span className="min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-center text-[11px] leading-none text-primary-foreground" aria-label={`${it.badge} mục chưa đọc`}>
+                    {it.badge}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </nav>
   );
 
@@ -136,7 +167,7 @@ export function AppNav({ items, orgName, userName, roleLabel, logoutAction }: {
       </div>
 
       {/* Thanh bên: màn hình rộng */}
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-5 border-r bg-sidebar px-3 py-4 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-4 border-r bg-sidebar px-3 py-4 lg:flex">
         {Brand}
         {nav}
         {footer}

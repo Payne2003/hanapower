@@ -1,0 +1,167 @@
+// CRM → báo giá → hợp đồng → dự án; chi phí duyệt → thanh toán; cộng tác viên; bảng lương — qua trình duyệt.
+import { expect, test, type Browser, type Page } from "@playwright/test";
+
+const PASSWORD = "MatKhau@123";
+
+async function login(browser: Browser, email: string): Promise<Page> {
+  const ctx = await browser.newContext({ acceptDownloads: true });
+  const page = await ctx.newPage();
+  page.on("dialog", (d) => d.accept()); // xác nhận / nhập lý do bằng hộp thoại của trình duyệt
+  await page.goto("/");
+  await page.getByLabel("Email công việc").fill(email);
+  await page.getByLabel("Mật khẩu").fill(PASSWORD);
+  await page.getByRole("button", { name: "Đăng nhập" }).click();
+  await expect(page.getByRole("heading", { name: /Xin chào/ })).toBeVisible();
+  return page;
+}
+
+const noError = async (p: Page) => {
+  await expect(p.getByText("Không tải được dữ liệu")).toHaveCount(0);
+  await expect(p.getByRole("heading").first()).toBeVisible();
+};
+
+test("quản trị mở được mọi trang của hệ thống mà không lỗi", async ({ browser }) => {
+  const p = await login(browser, "admin@hanamedia.local");
+  const paths = ["/", "/cong-viec", "/video", "/bao-cao", "/du-an", "/cong-tac-vien", "/lead", "/tai-khoan", "/lien-he", "/co-hoi", "/bao-gia", "/hop-dong", "/don-hang",
+    "/san-pham", "/danh-muc", "/don-vi", "/bang-gia", "/nguon-lead", "/nganh-nghe", "/thu-chi", "/thu-chi?tab=tam-ung", "/thu-chi?tab=thu", "/thu-chi?tab=cong-no", "/thu-chi?tab=lai-lo",
+    "/nhan-su", "/phong-ban", "/chuc-vu", "/cham-cong", "/luong", "/luong?tab=ho-so", "/luong?tab=thuong", "/luong?tab=cai-dat", "/thong-bao", "/tro-chuyen", "/cai-dat"];
+  for (const path of paths) {
+    const res = await p.goto(path);
+    expect(res?.status(), path).toBeLessThan(400);
+    await noError(p);
+  }
+  // Thanh điều hướng có nhóm giống CRM
+  await p.goto("/");
+  const nav = p.getByRole("navigation", { name: "Điều hướng chính" });
+  for (const t of ["Lead", "Tài khoản", "Liên hệ", "Cơ hội", "Báo giá", "Hợp đồng", "Đơn hàng", "Sản phẩm / dịch vụ", "Bảng giá", "Dự án", "Thu chi & công nợ", "Bảng lương"]) {
+    await expect(nav.getByRole("link", { name: t, exact: true })).toBeVisible();
+  }
+});
+
+test("danh mục CRM: tạo tài khoản rồi sửa; lead chuyển đổi thành khách + cơ hội", async ({ browser }) => {
+  const p = await login(browser, "leader@hanamedia.local");
+  await p.goto("/tai-khoan");
+  await p.getByText("Thêm tài khoản").click();
+  await p.getByLabel("Tên công ty *").fill("Công ty Thử Nghiệm E2E");
+  await p.getByRole("button", { name: "Thêm mới" }).click();
+  await expect(p.getByRole("heading", { name: "Công ty Thử Nghiệm E2E" })).toBeVisible();
+  await p.getByLabel("Mã số thuế").fill("0101010101");
+  await p.getByRole("button", { name: "Lưu thay đổi" }).click();
+  await expect(p.getByText("Đã lưu.")).toBeVisible();
+
+  await p.goto("/lead");
+  await p.getByRole("link", { name: /Quang Huy/ }).click();
+  await p.getByRole("button", { name: "Chuyển đổi", exact: true }).click();
+  await expect(p.getByRole("heading", { name: "Đã chuyển đổi" })).toBeVisible();
+  await expect(p.getByRole("link", { name: "Cơ hội", exact: true }).first()).toBeVisible();
+});
+
+test("cơ hội → báo giá → hợp đồng → kích hoạt → dự án", async ({ browser }) => {
+  const p = await login(browser, "leader@hanamedia.local");
+  await p.goto("/co-hoi");
+  await p.getByRole("link", { name: /Kênh YouTube du lịch Mặt Trời/ }).click();
+  await expect(p.getByRole("heading", { name: "Kênh YouTube du lịch Mặt Trời" })).toBeVisible();
+  await p.getByRole("button", { name: "Tạo báo giá từ các dòng trên" }).click();
+  await expect(p).toHaveURL(/\/bao-gia\//);
+  await expect(p.getByText("Nháp").first()).toBeVisible();
+  await p.getByRole("button", { name: "Gửi duyệt" }).click();
+  await p.getByRole("button", { name: "Duyệt báo giá" }).click();
+  await p.getByRole("button", { name: "Đã gửi cho khách" }).click();
+  await p.getByRole("button", { name: "Khách chấp nhận" }).click();
+  await p.getByRole("button", { name: "Tạo hợp đồng" }).click();
+  await expect(p).toHaveURL(/\/hop-dong\//);
+  await p.getByRole("button", { name: "Gửi chờ hiệu lực" }).click();
+  await p.getByRole("button", { name: "Kích hoạt hợp đồng" }).click();
+  await expect(p.getByText("Đang hiệu lực").first()).toBeVisible();
+  await p.getByRole("button", { name: "Tạo dự án", exact: true }).click();
+  await expect(p).toHaveURL(/\/du-an\//);
+  await expect(p.getByRole("heading", { name: /DA0002/ })).toBeVisible();
+  await p.getByRole("link", { name: "Nghiệm thu & thanh toán" }).click();
+  await expect(p.getByText("Nghiệm thu & thanh toán").first()).toBeVisible();
+});
+
+test("dự án: thành viên không thấy tiền; người ngoài không thấy dự án", async ({ browser }) => {
+  const m = await login(browser, "hieu@hanamedia.local");
+  await m.goto("/du-an");
+  await expect(m.getByTestId("list-projects")).toContainText("DA0001");
+  await m.getByRole("link", { name: /DA0001/ }).click();
+  await expect(m.getByRole("link", { name: "Nghiệm thu & thanh toán" })).toHaveCount(0);
+  await expect(m.getByRole("link", { name: "Lãi / lỗ" })).toHaveCount(0);
+  const o = await login(browser, "hoa@hanamedia.local");
+  await o.goto("/du-an");
+  await expect(o.getByText("Chưa có dự án nào bạn tham gia")).toBeVisible();
+});
+
+test("chi phí: nhân viên đề nghị → kế toán duyệt → thanh toán", async ({ browser }) => {
+  const e = await login(browser, "duy@hanamedia.local");
+  await e.goto("/thu-chi");
+  await e.getByText("Đề nghị chi / ghi nhận chi phí").click();
+  await e.getByLabel("Số tiền (₫) *").fill("750000");
+  await e.getByLabel("Dự án").selectOption({ index: 1 }); // dự án DA0001 mà Duy là thành viên
+  await e.getByLabel("Nội dung").fill("Mua thẻ nhớ E2E");
+  await e.getByRole("button", { name: "Gửi duyệt" }).click();
+  await expect(e.getByText("Đã lưu.")).toBeVisible();
+  await expect(e.getByTestId("list-expenses")).toContainText("Mua thẻ nhớ E2E");
+  await expect(e.getByTestId("list-expenses").locator("tr", { hasText: "Mua thẻ nhớ E2E" }).getByRole("button", { name: "Duyệt" })).toHaveCount(0);
+
+  const k = await login(browser, "ketoan@hanamedia.local");
+  await k.goto("/thu-chi");
+  const row = k.getByTestId("list-expenses").locator("tr", { hasText: "Mua thẻ nhớ E2E" });
+  await row.getByRole("button", { name: "Duyệt", exact: true }).click();
+  await expect(row.getByRole("button", { name: "Đã thanh toán" })).toBeVisible();
+  await row.getByRole("button", { name: "Đã thanh toán" }).click();
+  await expect(row).toContainText("Đã thanh toán");
+  const dl = k.waitForEvent("download");
+  await k.goto("/thu-chi?tab=lai-lo");
+  await expect(k.getByText("DA0001").first()).toBeVisible();
+  void dl.catch(() => undefined);
+});
+
+test("cộng tác viên chỉ thấy việc của mình; nhận việc → bàn giao → leader nghiệm thu", async ({ browser }) => {
+  const c = await login(browser, "ctv@hanamedia.local");
+  const nav = c.getByRole("navigation", { name: "Điều hướng chính" });
+  await expect(nav.getByRole("link", { name: "Tài khoản" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Thu chi & công nợ" })).toHaveCount(0);
+  await expect(c.getByTestId("collab-open")).toContainText("Thiết kế 4 thumbnail");
+  await c.getByRole("link", { name: /Thiết kế 4 thumbnail/ }).click();
+  await c.getByRole("button", { name: "Nhận việc" }).click();
+  await c.getByLabel(/Link sản phẩm/).fill("https://drive.example.com/thumb");
+  await c.getByRole("button", { name: "Bàn giao", exact: true }).click();
+  await expect(c.getByText("Sản phẩm bàn giao:")).toBeVisible();
+  await c.goto("/video");
+  await expect(c.getByTestId("video-row")).toHaveCount(0);
+
+  const l = await login(browser, "leader@hanamedia.local");
+  await l.goto("/cong-tac-vien");
+  await l.getByRole("link", { name: /Thiết kế 4 thumbnail/ }).first().click();
+  await l.getByRole("button", { name: /Nghiệm thu & đề nghị chi/ }).click();
+  await expect(l.getByText("Đã nghiệm thu").first()).toBeVisible();
+});
+
+test("lương: nhân sự tính & kiểm tra → kế toán duyệt & chi trả → nhân viên xem phiếu", async ({ browser }) => {
+  const h = await login(browser, "nhansu@hanamedia.local");
+  await h.goto("/cham-cong?m=2026-10");
+  await h.getByRole("button", { name: "Điền đủ công T2–T6" }).first().click();
+  await h.goto("/luong");
+  await h.getByText("Tạo / tính lại bảng lương một tháng").click();
+  await h.getByLabel("Năm *").fill("2026");
+  await h.getByLabel("Tháng *").fill("10");
+  await h.getByRole("button", { name: "Tạo bảng lương" }).click();
+  await expect(h.getByRole("heading", { name: /Bảng lương tháng 10\/2026/ })).toBeVisible();
+  await h.getByRole("button", { name: "Nhân sự xác nhận đã kiểm tra" }).click();
+  await expect(h.getByText("Nhân sự đã kiểm tra").first()).toBeVisible();
+
+  const k = await login(browser, "ketoan@hanamedia.local");
+  await k.goto("/luong");
+  await k.getByRole("link", { name: /Tháng 10\/2026/ }).click();
+  await k.getByRole("button", { name: "Kế toán duyệt bảng lương" }).click();
+  await k.getByRole("button", { name: "Xác nhận đã chi trả" }).click();
+  await expect(k.getByText(/Đã chi trả ngày/)).toBeVisible();
+
+  const e = await login(browser, "duy@hanamedia.local");
+  await e.goto("/luong");
+  await expect(e.getByRole("heading", { name: "Phiếu lương của tôi" })).toBeVisible();
+  await expect(e.getByText("Tháng 10/2026")).toBeVisible();
+  const res = await e.request.get("/luong/xuat");
+  expect(res.status()).toBe(404);
+});

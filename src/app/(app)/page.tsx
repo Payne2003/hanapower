@@ -9,6 +9,8 @@ import { PIPELINE, STAGE } from "@/lib/labels";
 import { isOverdue, monthRange, monthlyKpi, myAction } from "@/lib/pipeline";
 import { formatDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { BusinessOverview } from "@/components/business-overview";
+import { CollabHome } from "@/components/collab-home";
 
 function greeting() {
   const h = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Asia/Ho_Chi_Minh" }).format(new Date()));
@@ -23,6 +25,7 @@ export default async function DashboardPage() {
   openP.catch(() => undefined);
   peopleP.catch(() => undefined);
   const ctx = await requireContext();
+  if (ctx.roles.includes("collaborator")) return <CollabHome ctx={ctx} />;
   const month = ctx.today.slice(0, 7);
   const [open, monthVideos, people] = await Promise.all([openP, getVideos(monthRange(month)), peopleP]);
   const names = new Map(people.map((p) => [p.id, p.full_name]));
@@ -48,6 +51,8 @@ export default async function DashboardPage() {
         <StatCard label="Đã đăng" value={kpi.published} icon={<CheckCircle2 />} tone="sky" />
         <StatCard label="Quá hạn đăng" value={overdue.length} icon={<AlarmClock />} tone={overdue.length ? "orange" : "slate"} />
       </section>
+
+      <BusinessOverview ctx={ctx} />
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <section aria-labelledby="todo-h" className="flex flex-col gap-3">

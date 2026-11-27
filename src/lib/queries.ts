@@ -79,7 +79,7 @@ export async function getVideo(id: string) {
 
 export async function getNotifications(limit = 50): Promise<Notification[]> {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.from("notifications").select("id, video_id, kind, message, read_at, created_at").order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("notifications").select("id, video_id, link, kind, message, read_at, created_at").order("created_at", { ascending: false }).limit(limit);
   if (error) fail("thông báo", error);
   return (data ?? []) as Notification[];
 }

@@ -1,4 +1,4 @@
-export type AppRole = "system_admin" | "manager" | "content" | "editor";
+export type AppRole = "system_admin" | "manager" | "team_lead" | "content" | "editor" | "accountant" | "hr" | "collaborator";
 export type VideoStage = "idea" | "preparing" | "handover" | "editing" | "review" | "ready" | "published" | "on_hold" | "cancelled";
 export type ItemStatus = "todo" | "doing" | "done";
 export type ItemKind = "real_footage" | "ai_video" | "script_vo" | "edit_map";
@@ -77,6 +77,6 @@ export type VideoEvent = {
 
 export type VideoComment = { id: string; author_id: string; body: string; created_at: string };
 
-export type Notification = { id: number; video_id: string | null; kind: string; message: string; read_at: string | null; created_at: string };
+export type Notification = { id: number; video_id: string | null; link?: string | null; kind: string; message: string; read_at: string | null; created_at: string };
 
 export type ActionResult<T = undefined> = { ok: true; data?: T; message?: string } | { ok: false; error: string };

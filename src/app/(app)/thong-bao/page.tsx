@@ -33,7 +33,7 @@ export default async function NotificationsPage() {
                 <Bell className="size-4" />
               </span>
               <div className="min-w-0 flex-1">
-                {n.video_id ? <Link href={`/video/${n.video_id}`} className="font-medium leading-snug hover:underline">{n.message}</Link> : <span className="font-medium">{n.message}</span>}
+                {n.video_id || n.link ? <Link href={n.link ?? `/video/${n.video_id}`} className="font-medium leading-snug hover:underline">{n.message}</Link> : <span className="font-medium">{n.message}</span>}
                 <p className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(n.created_at, ctx.timezone)}{n.read_at ? "" : " · chưa đọc"}</p>
               </div>
             </li>
