@@ -411,3 +411,55 @@ describe("Nhập khách hàng từ Excel (import_crm) và thông tin công ty", 
     });
   });
 });
+
+describe("Nhập sản phẩm từ Excel và sửa hợp đồng", () => {
+  it("nhập sản phẩm: bỏ trùng tên / mã, tự tạo danh mục & đơn vị chỉ khi được phép", async () => {
+    await scenario(async (q, as) => {
+      await as(U.hieu);
+      await expectError(q(`select import_crm('products', '[{"name":"X"}]'::jsonb)`), /42501|quyền/);
+      await as(U.leader);
+      const rows = JSON.stringify([
+        { name: "Dịch vụ A", code: "DVA", list_price: 1500000, category_name: "Nhóm mới", unit_name: "Buổi" },
+        { name: "Dịch vụ B", code: "dvA" }, // trùng mã (không phân biệt hoa thường) với dòng trước
+        { name: "Dựng hậu kỳ video" }, // trùng tên với dữ liệu mẫu
+        { name: "Dịch vụ C", list_price: -5 },
+        { name: "Dịch vụ D", list_price: 200000, is_active: "false" },
+      ]);
+      const no = await one<{ import_crm: Record<string, number> }>(q, "select import_crm('products', $1::jsonb, false)", [rows]);
+      expect(no.import_crm).toMatchObject({ inserted: 2, skipped: 3, lookups_created: 0 });
+      expect((await q("select 1 from product_categories where name = 'Nhóm mới'")).length).toBe(0);
+    });
+    await scenario(async (q, as) => {
+      await as(U.leader);
+      const rows = JSON.stringify([{ name: "Dịch vụ A", list_price: 1500000, category_name: "nhóm MỚI", unit_name: "Buổi" }, { name: "Dịch vụ E", category_name: "Nhóm mới", unit_name: "buổi" }]);
+      const r = await one<{ import_crm: Record<string, number> }>(q, "select import_crm('products', $1::jsonb, true)", [rows]);
+      expect(r.import_crm).toMatchObject({ inserted: 2, lookups_created: 2 });
+      const p = await q("select category_id, unit_id, list_price from products where name in ('Dịch vụ A','Dịch vụ E') order by name");
+      expect(p[0]!.category_id).toBe(p[1]!.category_id);
+      expect(p[0]!.unit_id).toBe(p[1]!.unit_id);
+      expect(Number(p[0]!.list_price)).toBe(1500000);
+    });
+  });
+
+  it("sửa hợp đồng: nháp sửa được điều khoản bổ sung và ngày; đã hiệu lực chỉ ghi nhận chữ ký; người không có quyền bị từ chối", async () => {
+    await scenario(async (q, as) => {
+      await as(U.leader);
+      const quote = (await one<{ create_quote: string }>(q, "select create_quote($1)", [ID.opp2])).create_quote;
+      await q("select set_quote_status($1, 'pending_approval')", [quote]);
+      await q("select set_quote_status($1, 'approved')", [quote]);
+      await q("select set_quote_status($1, 'sent')", [quote]);
+      await q("select set_quote_status($1, 'accepted')", [quote]);
+      const ct = (await one<{ create_contract: string }>(q, "select create_contract($1)", [quote])).create_contract;
+      await q("select update_contract($1, '2026-12-01', '2027-05-31', 'Thanh toán trong 7 ngày', 'Anh Tuấn', '2026-11-25', null)", [ct]);
+      const a = await one<{ note: string; duration_months: number; customer_signed_by: string }>(q, "select note, duration_months, customer_signed_by from contracts where id = $1", [ct]);
+      expect(a).toMatchObject({ note: "Thanh toán trong 7 ngày", duration_months: 6, customer_signed_by: "Anh Tuấn" });
+      await expectError(q("select update_contract($1, '2027-06-01', '2027-05-01', null, null, null, null)", [ct]), "Ngày hết hạn");
+      await q("select set_contract_status($1, 'pending')", [ct]);
+      await q("select set_contract_status($1, 'active')", [ct]);
+      await q("select update_contract($1, '2026-12-01', '2027-05-31', 'Thanh toán trong 7 ngày', 'Anh Tuấn', '2026-11-25', '2026-11-26')", [ct]);
+      await expectError(q("select update_contract($1, '2026-12-02', '2027-05-31', 'Thanh toán trong 7 ngày', 'Anh Tuấn', '2026-11-25', '2026-11-26')", [ct]), "chỉ ghi nhận");
+      await as(U.hieu);
+      await expectError(q("select update_contract($1, null, null, null, null, null, null)", [ct]), /42501|quyền/);
+    });
+  });
+});

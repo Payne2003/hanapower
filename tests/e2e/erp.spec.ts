@@ -229,3 +229,68 @@ test("nhập khách hàng từ Excel: xem trước, loại trùng, nhập, nhậ
   await h.goto("/nhap-khach-hang/tai-khoan");
   await expect(h).toHaveURL(/\/tai-khoan$/);
 });
+
+test("hợp đồng PDF: tải được tệp hợp lệ; sửa điều khoản bổ sung; người không có quyền không thấy", async ({ browser }) => {
+  const l = await login(browser, "leader@hanamedia.local");
+  await l.goto("/hop-dong");
+  await l.getByRole("link", { name: /HD0001/ }).click();
+  await expect(l.getByRole("link", { name: "Tải PDF" })).toBeVisible();
+  const url = new URL(l.url()).pathname;
+  const res = await l.request.get(`${url}/pdf`);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("application/pdf");
+  const body = await res.body();
+  expect(body.subarray(0, 5).toString()).toBe("%PDF-");
+  expect(body.length).toBeGreaterThan(10_000);
+  expect((await l.request.get(`${url}/pdf?tai=1`)).headers()["content-disposition"]).toContain('attachment; filename="HD0001.pdf"');
+
+  // Hợp đồng đang hiệu lực: ghi nhận chữ ký được, không đổi được ngày
+  await l.getByText("Sửa ngày hiệu lực, điều khoản bổ sung, thông tin chữ ký").click();
+  await l.getByLabel("Người đại diện khách ký").fill("Chị Thu Hà");
+  await l.getByRole("button", { name: "Lưu hợp đồng" }).click();
+  await expect(l.getByText("Đã lưu.")).toBeVisible();
+  await l.getByLabel(/Điều khoản bổ sung/).fill("Điều khoản mới");
+  await l.getByRole("button", { name: "Lưu hợp đồng" }).click();
+  await expect(l.getByText(/chỉ ghi nhận được thông tin chữ ký/)).toBeVisible();
+
+  const e = await login(browser, "hoa@hanamedia.local");
+  expect((await e.request.get(`${url}/pdf`)).status()).toBe(404);
+});
+
+test("nhập sản phẩm từ Excel: khớp danh mục, tự tạo danh mục mới, bỏ trùng", async ({ browser }) => {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Bảng giá");
+  ws.addRow(["Dịch vụ", "Mã", "Nhóm", "ĐVT", "Đơn giá"]);
+  ws.addRow(["Thiết kế thumbnail E2E", "TB-E2E", "Thiết kế E2E", "Ảnh", "300000"]);
+  ws.addRow(["Lồng tiếng E2E", "LT-E2E", "Hậu kỳ", "Phút", "1.200.000"]);
+  ws.addRow(["Dựng hậu kỳ video", "", "Hậu kỳ", "Video", "4000000"]); // trùng tên với dữ liệu mẫu
+  ws.addRow(["Giá hỏng E2E", "", "", "", "abc"]);
+  const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+  const file = { name: "san-pham.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer };
+
+  const p = await login(browser, "leader@hanamedia.local");
+  await p.goto("/san-pham");
+  await p.getByRole("link", { name: "Nhập từ Excel" }).click();
+  expect((await p.request.get("/nhap-khach-hang/san-pham/mau")).status()).toBe(200);
+  await p.getByLabel(/Tệp \.xlsx/).setInputFiles(file);
+  await p.getByRole("button", { name: "Đọc tệp và xem trước" }).click();
+  const sum = p.getByTestId("import-summary");
+  await expect(sum).toContainText("2 bản ghi mới");
+  await expect(sum).toContainText("1 trùng");
+  await expect(sum).toContainText("1 lỗi");
+  await expect(p.getByText(/Danh mục "Thiết kế E2E" chưa có/)).toBeVisible();
+  await p.getByRole("button", { name: "Nhập 2 bản ghi" }).click();
+  await expect(p.getByTestId("import-done")).toContainText("tạo mới 2 danh mục / đơn vị");
+
+  await p.goto("/san-pham?q=E2E");
+  await expect(p.getByTestId("list-product")).toContainText("Thiết kế thumbnail E2E");
+  await expect(p.getByTestId("list-product")).toContainText("1.200.000");
+  await p.goto("/danh-muc?q=E2E");
+  await expect(p.getByTestId("list-category")).toContainText("Thiết kế E2E");
+
+  await p.goto("/nhap-khach-hang/san-pham");
+  await p.getByLabel(/Tệp \.xlsx/).setInputFiles(file);
+  await p.getByRole("button", { name: "Đọc tệp và xem trước" }).click();
+  await expect(p.getByTestId("import-summary")).toContainText("0 bản ghi mới");
+});

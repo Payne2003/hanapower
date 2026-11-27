@@ -1,0 +1,58 @@
+# Nạp / gỡ dữ liệu ảo để xem demo (xem docs/demo-data.md). Chạy tay: Actions → "Dữ liệu demo (nạp / gỡ)" → Run workflow.
+# Dùng secret SUPABASE_DB_URL như workflow cập nhật cơ sở dữ liệu. Dữ liệu demo gắn id riêng nên gỡ sạch được, không đụng dữ liệu thật.
+name: Dữ liệu demo (nạp / gỡ)
+
+on:
+  workflow_dispatch:
+    inputs:
+      hanh_dong:
+        description: "Hành động"
+        type: choice
+        options: [nap, go]
+        default: nap
+      xac_nhan:
+        description: "Gõ DEMO để xác nhận (thao tác ghi vào cơ sở dữ liệu thật)"
+        required: true
+      mat_khau:
+        description: "Mật khẩu chung cho các tài khoản demo (≥ 8 ký tự; chỉ cần khi nạp). LƯU Ý: giá trị này hiện trong trang chạy workflow — dùng mật khẩu tạm"
+        required: false
+      doanh_nghiep:
+        description: "Tên doanh nghiệp (để trống = doanh nghiệp đầu tiên)"
+        required: false
+
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  demo:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Kiểm tra xác nhận
+        env:
+          XAC_NHAN: ${{ inputs.xac_nhan }}
+        run: |
+          if [ "$XAC_NHAN" != "DEMO" ]; then echo "::error::Cần gõ đúng DEMO để xác nhận."; exit 1; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Nạp / gỡ dữ liệu demo
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          APP_ENV: production
+          HANH_DONG: ${{ inputs.hanh_dong }}
+          MAT_KHAU: ${{ inputs.mat_khau }}
+          DOANH_NGHIEP: ${{ inputs.doanh_nghiep }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then echo "::error::Chưa có secret SUPABASE_DB_URL (xem docs/deploy-cloud.md)."; exit 1; fi
+          args=()
+          if [ -n "$DOANH_NGHIEP" ]; then args+=(--org "$DOANH_NGHIEP"); fi
+          if [ "$HANH_DONG" = "go" ]; then
+            node scripts/seed-demo.mjs --remove "${args[@]}"
+          else
+            if [ "${#MAT_KHAU}" -lt 8 ]; then echo "::error::Cần mật khẩu demo tối thiểu 8 ký tự."; exit 1; fi
+            node scripts/seed-demo.mjs --password "$MAT_KHAU" "${args[@]}"
+          fi
