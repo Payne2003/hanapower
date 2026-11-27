@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Crown } from "lucide-react";
+import { ArrowLeft, Crown, Pencil } from "lucide-react";
 import { requireContext, can, hasRole } from "@/lib/auth";
 import { getDepartmentOverview, getDepartmentTasks, getLookups, getStaffList, parseStaffQuery } from "@/lib/hr";
 import { badge, EMPLOYMENT_STATUS, WORK_FORM, TASK_PRIORITY, TASK_STATUS, TASK_TYPE } from "@/lib/status-maps";
@@ -85,10 +85,12 @@ export default async function DepartmentPage({ params, searchParams }: { params:
             </CardContent></Card>
           </div>
           {isAdmin ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <RpcButton rpc="set_department_active" args={{ p_dept: id, p_active: !d.active }} label={d.active ? "Ngừng hoạt động phòng" : "Bật lại phòng"} variant="outline" confirm={d.active ? "Ngừng hoạt động phòng ban này? Phòng sẽ không nhận thêm thành viên mới." : undefined} revalidate={rev} />
-              <Disclosure summary="Đổi tên phòng"><EntityForm entity="department" id={id} fields={e.fields(L as never).filter((f) => f.name === "name").map((f) => ({ ...f, defaultValue: d.name }))} /></Disclosure>
-            </div>
+            <section aria-label="Quản trị phòng ban" className="flex flex-col gap-3">
+              <div>
+                <RpcButton rpc="set_department_active" args={{ p_dept: id, p_active: !d.active }} label={d.active ? "Ngừng hoạt động phòng" : "Bật lại phòng"} variant="outline" size="default" confirm={d.active ? "Ngừng hoạt động phòng ban này? Phòng sẽ không nhận thêm thành viên mới." : undefined} revalidate={rev} />
+              </div>
+              <Disclosure summary="Đổi tên phòng" icon={<Pencil className="size-4" aria-hidden />}><EntityForm entity="department" id={id} fields={e.fields(L as never).filter((f) => f.name === "name").map((f) => ({ ...f, defaultValue: d.name }))} /></Disclosure>
+            </section>
           ) : null}
         </div>
       ) : null}
