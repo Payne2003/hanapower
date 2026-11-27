@@ -67,6 +67,19 @@ Mục tiêu của đợt này: **có đủ khung menu / trang giống CRM Apollo
 - Dữ liệu demo bổ sung ghi chú và lịch sử hoạt động; kiểm thử "mọi bảng có dữ liệu" tự bao gồm bảng mới.
 - Kiểm thử: unit 34, CSDL 56, E2E 22.
 
+### Bổ sung: Bảng công việc theo quy trình video (migration `0910`)
+
+Mục **Công việc** (`/cong-viec`) có 4 tab dùng chung một nguồn dữ liệu (`tasks` + `task_assignees`):
+
+- **Danh sách chờ** – bảng tra cứu mọi việc kể cả Hoãn / Hủy, giữ các nút cũ (Bắt đầu / Hoàn thành / Mở lại / Xóa) cho việc độc lập.
+- **Bảng công việc** (mặc định) – 3 cột *Việc cần làm / Đang tiến hành / Xong*, đếm số thẻ, nút “+” thêm nhanh, kéo thả và ô “Chuyển đến” (điện thoại / bàn phím). Có thêm chế độ **Theo nhóm công việc**: tự thêm / đổi tên / xóa nhóm (cột), xếp thẻ vào nhóm.
+- **Lịch sản xuất** – tuần / tháng; việc có ngày bắt đầu + hạn là thanh trải dài, chỉ có hạn là cột mốc ◆, chưa có ngày nằm ở “Chưa xếp lịch”.
+- **Việc của tôi** – “Cần tôi xử lý” (Content cần chuẩn bị / bổ sung, Editor cần xác nhận bàn giao / dựng / sửa, Leader cần duyệt, người có quyền đăng) và “Được giao cho tôi”.
+
+Mỗi video tự có 2 đầu việc (**Chuẩn bị nội dung**, **Dựng bản nháp**) do trigger CSDL đồng bộ từ video (khóa `video_id` + `kind`, nên không trùng). Trạng thái / người phụ trách / ưu tiên của đầu việc video luôn theo video: chờ duyệt vẫn là *Đang tiến hành* (nhãn “Chờ Leader duyệt”), duyệt xong → *Xong* và video “Chờ đăng”; “Đã đăng” chỉ qua xác nhận đăng. Kéo thẻ video **không** đổi trạng thái: hệ thống mở đúng bước (bàn giao / nộp duyệt / duyệt) hoặc báo lý do; `set_task_status`, `save_task`, `delete_task`, `set_task_assignees` từ chối đầu việc video và trigger `tasks_guard` chặn ghi trực tiếp kể cả quản lý CRM. Lịch do Leader đặt (`set_task_schedule`) được giữ qua các lần đồng bộ. Việc có thể liên kết dự án (`save_task` / `set_task_project`; đầu việc video theo dự án của video), lọc theo dự án, hiện mã dự án trên thẻ.
+
+Kiểm thử: `tests/db/work-board.test.ts` (đồng bộ, chặn bỏ qua quy trình, quyền xem, đặt lịch, nhóm, dự án, kịch bản BelAZ), `tests/e2e/work-board.spec.ts` (bảng, kéo thả, lỗi → hoàn tác, thẻ video, BelAZ, lọc, phân quyền, điện thoại, nhóm + dự án). Dữ liệu demo có thêm video **BelAZ** (đang dựng 65%, hạn thứ Sáu) và 3 nhóm công việc.
+
 ### Giới hạn đã biết (chưa làm hoặc làm mức cơ bản)
 
 - **Thuế TNCN không tự tính** — kế toán nhập tay thành một dòng "Thuế TNCN" (biểu thuế cần cập nhật theo quy định hiện hành). Tỷ lệ bảo hiểm mặc định 10,5% chỉnh được ở Bảng lương → Thiết lập; cần kế toán xác nhận.

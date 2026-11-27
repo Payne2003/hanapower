@@ -11,6 +11,7 @@ begin
   delete from public.advances where id::text like 'dede%';
   delete from public.incomes where id::text like 'dede%';
   delete from public.tasks where id::text like 'dede%';                     -- kéo theo người được giao
+  delete from public.task_groups where id::text like 'dede%';               -- việc còn lại tự về "Chưa phân nhóm"
   delete from public.projects where id::text like 'dede%';                  -- kéo theo thành viên, ngân sách, mốc
   delete from public.videos where id::text like 'dede%';                    -- kéo theo hạng mục, lịch sử, trao đổi
   delete from public.orders where id::text like 'dede%';

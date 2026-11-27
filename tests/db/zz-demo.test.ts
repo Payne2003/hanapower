@@ -30,7 +30,7 @@ describe("dữ liệu demo", () => {
     expect(await counts()).toEqual(after);
     // dữ liệu demo nằm đúng doanh nghiệp được chọn, không đụng doanh nghiệp còn lại
     const { rows } = await c.query("select org_id, count(*)::int n from public.videos where id::text like 'dede%' group by 1");
-    expect(rows).toEqual([{ org_id: OTHER_ORG, n: 36 }]);
+    expect(rows).toEqual([{ org_id: OTHER_ORG, n: 37 }]);
     run("--remove", ...org);
     const gone = await counts();
     const diff = Object.keys(before).filter((t) => before[t] !== gone[t] && t !== "org_counters");

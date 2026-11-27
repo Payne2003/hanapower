@@ -287,6 +287,33 @@ begin
         (v_org, v_id, usr[2], 'Đã nhận. Phần mở đầu cần thêm cảnh toàn cảnh để tạo không khí.', (v_rep + 1)::timestamptz + interval '5 hours');
     end if;
   end loop;
+  -- ---------------- Video BelAZ: đang dựng 65%, hạn thứ Sáu — dùng để thử Bảng công việc -----------------
+  v_id := pg_temp.did(3, 37);
+  if not exists (select 1 from public.videos where id = v_id) then
+    select greatest((select last_video_no from public.org_counters where org_id = v_org), coalesce((select max(nullif(regexp_replace(code, '\D', '', 'g'), '')::int) from public.videos where org_id = v_org), 0)) + 1 into v_no;
+    update public.org_counters set last_video_no = v_no where org_id = v_org;
+    insert into public.videos (id, org_id, code, title, brief, channel_id, priority, stage, report_date, due_date, content_owner_id, resource_url, content_note,
+        editor_id, handover_status, handover_submitted_at, handover_confirmed_at, edit_progress, draft_url, created_by)
+    values (v_id, v_org, 'D' || lpad(v_no::text, 4, '0'), 'BelAZ', 'Xe tải mỏ BelAZ 75710 — phim giới thiệu thông số và cảnh vận hành', ch[1], 'high', 'editing', v_today - 4,
+      v_today + ((5 - extract(isodow from v_today)::int + 7) % 7), usr[4], 'https://drive.google.com/drive/folders/DEMO-BELAZ', 'Ưu tiên cảnh xe đổ tải',
+      usr[7], 'received', (v_today - 3)::timestamptz, (v_today - 2)::timestamptz, 65, 'https://drive.google.com/file/d/DEMO-DRAFT-BELAZ', usr[1]);
+    insert into public.video_items (org_id, video_id, kind, status, updated_by)
+    select v_org, v_id, kd, 'done', usr[4] from unnest(array['real_footage', 'ai_video', 'script_vo', 'edit_map']) kd;
+    insert into public.video_events (org_id, video_id, actor_id, event_type, from_stage, to_stage, created_at) values
+      (v_org, v_id, usr[1], 'created', null, 'idea', (v_today - 4)::timestamptz),
+      (v_org, v_id, usr[4], 'handover_submit', 'preparing', 'handover', (v_today - 3)::timestamptz),
+      (v_org, v_id, usr[7], 'handover_received', 'handover', 'editing', (v_today - 2)::timestamptz);
+  end if;
+  -- ---------------- Nhóm công việc: xếp đầu việc của video demo vào nhóm -----------------
+  insert into public.task_groups (id, org_id, name, sort_order, created_by) values
+    (pg_temp.did(31, 1), v_org, 'Content & kịch bản', 1, usr[1]),
+    (pg_temp.did(31, 2), v_org, 'Dựng & hậu kỳ', 2, usr[1]),
+    (pg_temp.did(31, 3), v_org, 'Quản lý giao việc', 3, usr[1])
+  on conflict (id) do nothing;
+  update public.tasks set group_id = case kind when 'content' then pg_temp.did(31, 1) else pg_temp.did(31, 2) end
+    where video_id::text like 'dede%' and group_id is null;
+  update public.tasks set group_id = pg_temp.did(31, 3) where group_id is null and video_id is null and id::text like 'dede%';
+
   for i in 1..36 loop
     if i % 4 = 0 then update public.videos set project_id = proj[1 + (i / 4) % 4] where id = pg_temp.did(3, i) and project_id is null; end if;
   end loop;

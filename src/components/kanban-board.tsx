@@ -45,7 +45,7 @@ export function KanbanBoard({ columns: initial, rpc, idArg, statusArg, prompt, r
   return (
     <div className="flex flex-col gap-3">
       {err ? <Alert tone="error">{err}</Alert> : null}
-      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-3" data-testid="kanban">
+      <div className="relative -mx-1 flex gap-3 overflow-x-auto px-1 pb-3" data-testid="kanban">
         {cols.map((c) => (
           <section
             key={c.value}
