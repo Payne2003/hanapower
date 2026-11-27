@@ -206,8 +206,9 @@ function StepCard({ n, title, description, state, badge, children, testId }: {
 }) {
   return (
     <section
+      id={testId}
       data-testid={testId}
-      className={cn(
+      className={cn("scroll-mt-20 ",
         "rounded-xl border bg-card shadow-[var(--shadow-card)] transition-colors",
         state === "current" && "border-primary/40 ring-4 ring-primary/5",
         state === "todo" && "bg-card/60",

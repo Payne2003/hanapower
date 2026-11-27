@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AppRole, Channel, ItemKind, ItemStatus, Notification, Person, Video, VideoComment, VideoEvent } from "@/lib/types";
 
 const VIDEO_COLS =
-  "id, code, title, brief, channel_id, priority, stage, report_date, due_date, content_owner_id, resource_url, content_note, editor_id, handover_status, handover_submitted_at, handover_confirmed_at, editor_note, supplement_count, edit_progress, draft_url, review_note, revision_count, approved_at, published_url, published_at, hold_reason, created_at, updated_at, video_items(kind, status)";
+  "id, code, title, brief, channel_id, priority, stage, report_date, due_date, content_owner_id, resource_url, content_note, editor_id, handover_status, handover_submitted_at, handover_confirmed_at, editor_note, supplement_count, edit_progress, draft_url, review_note, revision_count, approved_at, published_url, published_at, hold_reason, project_id, created_at, updated_at, video_items(kind, status)";
 
 type Raw = Omit<Video, "items"> & { video_items: { kind: ItemKind; status: ItemStatus }[] };
 
@@ -51,6 +51,18 @@ export async function getVideos(f: VideoFilter = {}): Promise<Video[]> {
   const { data, error } = await q;
   if (error) fail("danh sách video", error);
   return ((data ?? []) as unknown as Raw[]).map(toVideo);
+}
+
+/** Các video theo danh sách mã (chia lô để URL không quá dài). Chỉ trả về video người dùng được xem. */
+export async function getVideosByIds(ids: string[]): Promise<Video[]> {
+  const supabase = await createSupabaseServerClient();
+  const out: Video[] = [];
+  for (let i = 0; i < ids.length; i += 60) {
+    const { data, error } = await supabase.from("videos").select(VIDEO_COLS).in("id", ids.slice(i, i + 60));
+    if (error) fail("video của công việc", error);
+    out.push(...((data ?? []) as unknown as Raw[]).map(toVideo));
+  }
+  return out;
 }
 
 /** Video đang chạy (chưa đăng/hủy), không giới hạn tháng — cho Tổng quan. */

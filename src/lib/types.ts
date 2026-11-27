@@ -60,6 +60,7 @@ export type Video = {
   published_url: string | null;
   published_at: string | null;
   hold_reason: string | null;
+  project_id?: string | null;
   created_at: string;
   updated_at: string;
   items: Record<ItemKind, ItemStatus>;
