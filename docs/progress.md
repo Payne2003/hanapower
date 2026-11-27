@@ -80,6 +80,10 @@ Mỗi video tự có 2 đầu việc (**Chuẩn bị nội dung**, **Dựng bả
 
 Kiểm thử: `tests/db/work-board.test.ts` (đồng bộ, chặn bỏ qua quy trình, quyền xem, đặt lịch, nhóm, dự án, kịch bản BelAZ), `tests/e2e/work-board.spec.ts` (bảng, kéo thả, lỗi → hoàn tác, thẻ video, BelAZ, lọc, phân quyền, điện thoại, nhóm + dự án). Dữ liệu demo có thêm video **BelAZ** (đang dựng 65%, hạn thứ Sáu) và 3 nhóm công việc.
 
+### Bổ sung: quản trị nhân sự — Phòng ban, Nhân viên, Chức vụ (migration `0930`)
+
+Xem `docs/nhan-su.md` (đối chiếu sơ đồ ↔ schema thật, bảng Tính năng | Bảng/cột | Quyền). Điểm chính: một người giữ **nhiều chức vụ cùng phòng**, nhiều quản lý / phòng, danh bạ nhân viên có mã NV, hình thức làm việc, loại và trạng thái nhân sự; hồ sơ có Tổng quan · Công tác · Liên hệ · Tài liệu · Công việc · Lương & bảo hiểm · Tài khoản; lọc / sắp xếp / phân trang / tổng hợp chạy ở CSDL; CSV theo bộ lọc. Kiểm thử: `tests/db/hr.test.ts` (13 bài), `tests/e2e/hr.spec.ts` (8 bài).
+
 ### Giới hạn đã biết (chưa làm hoặc làm mức cơ bản)
 
 - **Thuế TNCN không tự tính** — kế toán nhập tay thành một dòng "Thuế TNCN" (biểu thuế cần cập nhật theo quy định hiện hành). Tỷ lệ bảo hiểm mặc định 10,5% chỉnh được ở Bảng lương → Thiết lập; cần kế toán xác nhận.

@@ -42,7 +42,9 @@ test("khởi tạo lần đầu, tạo tài khoản nhân viên, đặt lại m�
   await expect(page.getByText("Đã tạo tài khoản nhanvien.moi@vidu.vn")).toBeVisible();
 
   // Đặt lại mật khẩu cho nhân viên
-  const row = page.locator("li").filter({ hasText: "nhanvien.moi@vidu.vn" });
+  await page.goto("/nhan-su?xem=chi-tiet&q=Nhân Viên Mới");
+  await page.getByTestId("ptab-tai-khoan").click();
+  const row = page.getByTestId("staff-profile");
   await row.getByLabel("Mật khẩu mới").fill("MatKhauMoi456");
   await row.getByRole("button", { name: "Đặt lại mật khẩu" }).click();
   await expect(row.getByText("Đã đặt mật khẩu mới cho nhanvien.moi@vidu.vn.")).toBeVisible();
@@ -54,5 +56,8 @@ test("khởi tạo lần đầu, tạo tài khoản nhân viên, đặt lại m�
   await expect(other.getByRole("heading", { name: "Xin chào, Nhân Viên Mới" })).toBeVisible();
   await other.getByRole("link", { name: "Video", exact: true }).click();
   await expect(other.getByText("Tạo video mới")).toBeVisible();
-  await expect(other.getByRole("link", { name: "Nhân viên", exact: true })).toHaveCount(0);
+  // Danh bạ nhân viên mở cho mọi nhân viên, nhưng tạo tài khoản chỉ dành cho quản trị
+  await other.getByRole("link", { name: "Nhân viên", exact: true }).click();
+  await expect(other.getByRole("heading", { name: "Nhân viên", exact: true })).toBeVisible();
+  await expect(other.getByText("Tạo tài khoản nhân viên")).toHaveCount(0);
 });

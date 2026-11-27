@@ -1,68 +1,90 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, UserCog } from "lucide-react";
+import { Download, Plus, Search } from "lucide-react";
 import { requireContext, can, hasRole } from "@/lib/auth";
-import { getOrgStructure } from "@/lib/org-data";
-import { ROLE_LABEL } from "@/lib/labels";
-import { PageHeader, StatCard, Avatar } from "@/components/ui/page-header";
+import { getDepartments, parseDeptQuery, type DeptQuery } from "@/lib/hr";
+import { entityBySlug, loadLookups } from "@/lib/entities";
+import { PageHeader, StatCard } from "@/components/ui/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Disclosure } from "@/components/disclosure";
 import { EntityForm } from "@/components/entity-form";
-import { entityBySlug, loadLookups } from "@/lib/entities";
+import { EmptyState } from "@/components/ui/alert";
 import { NoAccess } from "@/components/data-table";
-import { Badge } from "@/components/ui/badge";
+import { Pager, SELECT, SortTh, TABLE, THEAD } from "@/components/hr/ui";
 
 export const metadata: Metadata = { title: "Phòng ban" };
 
-export default async function DepartmentsPage() {
-  const ctx = await requireContext();
+type SP = Record<string, string | undefined>;
+
+export default async function DepartmentsPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const [ctx, sp] = await Promise.all([requireContext(), searchParams]);
   if (hasRole(ctx, "collaborator")) return <NoAccess what="Cơ cấu phòng ban" />;
+  const q: DeptQuery = parseDeptQuery(sp);
   const e = entityBySlug("phong-ban")!;
-  const [org, L] = await Promise.all([getOrgStructure(), loadLookups(["people"])]);
+  const [res, L] = await Promise.all([getDepartments(q), loadLookups(["people"])]);
   const canEdit = can(ctx, "users.manage");
-  const assigned = new Set(org.departments.flatMap((d) => org.membersOf(d.id).map((m) => m.id)));
-  const unassigned = org.staff.filter((s) => !assigned.has(s.id));
-  const name = new Map(org.staff.map((s) => [s.id, s.full_name]));
+  const filtered = !!(q.q || q.active !== undefined);
+  const params = (over: Partial<DeptQuery> = {}) => {
+    const m = { ...q, ...over };
+    const p: Record<string, string | undefined> = { q: m.q || undefined, "trang-thai": m.active === true ? "dang-hoat-dong" : m.active === false ? "ngung" : undefined, sx: m.sort !== "name" ? m.sort : undefined, chieu: m.dir === "desc" ? "desc" : undefined, trang: m.page > 1 ? String(m.page) : undefined };
+    const items = Object.entries(p).filter(([, v]) => v);
+    return items.length ? `?${items.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&")}` : "";
+  };
+  const t = res.totals;
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-5">
-      <PageHeader title="Phòng ban" eyebrow={`${org.departments.length} phòng ban · ${org.staff.length} nhân viên`} description="Cơ cấu tổ chức: mỗi phòng ban gồm các nhân viên với chức vụ riêng; một nhân viên có thể thuộc nhiều phòng ban." />
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Phòng ban" value={org.departments.length} tone="green" />
-        <StatCard label="Nhân viên" value={org.staff.length} tone="sky" />
-        <StatCard label="Chưa phân bổ" value={unassigned.length} tone={unassigned.length ? "orange" : "slate"} />
-        <StatCard label="Đã có trưởng phòng" value={`${org.departments.filter((d) => d.manager_id).length}/${org.departments.length}`} tone="violet" />
+    <div className="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-5">
+      <PageHeader title="Phòng ban" eyebrow={`${res.total} phòng${filtered ? " khớp bộ lọc" : ""}`}
+        description="Cơ cấu tổ chức: mỗi phòng gồm các nhân viên với một hoặc nhiều chức vụ và một hoặc nhiều người quản lý; một nhân viên có thể thuộc nhiều phòng."
+        actions={<a href={`/nhan-su/xuat${params({ page: 1 }) ? `${params({ page: 1 })}&` : "?"}loai=phong-ban`} data-testid="export-depts" className="inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-lg border bg-card px-3 text-sm font-medium hover:bg-muted"><Download className="size-4" aria-hidden />Xuất CSV</a>} />
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="dept-stats">
+        <StatCard label="Phòng ban" value={t.departments} tone="green" />
+        <StatCard label="Đang hoạt động" value={t.active} tone="sky" />
+        <StatCard label="Nhân viên đã vào phòng" value={t.members} tone="violet" hint="Mỗi người tính một lần" href="/nhan-su" />
+        <StatCard label="Chưa thuộc phòng nào" value={t.unassigned} tone={t.unassigned ? "orange" : "slate"} href="/nhan-su?chua-phan-phong=1" />
       </section>
-      {canEdit ? (
-        <Disclosure summary="Thêm phòng ban" icon={<Plus className="size-4" aria-hidden />}><EntityForm entity="department" fields={e.fields(L)} /></Disclosure>
-      ) : null}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="department-cards">
-        {org.departments.map((d) => {
-          const members = org.membersOf(d.id);
-          const roleCount = new Map<string, number>();
-          for (const m of members) for (const r of m.roles) roleCount.set(r, (roleCount.get(r) ?? 0) + 1);
-          return (
-            <Link key={d.id} href={`/phong-ban/${d.id}`} className="group flex flex-col gap-3 rounded-xl border bg-card p-5 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-pop)]">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0"><h2 className="truncate text-[15px] font-semibold group-hover:text-primary">{d.name}</h2>
-                  <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><UserCog className="size-3.5" aria-hidden />{d.manager_id ? `Trưởng phòng: ${name.get(d.manager_id) ?? "—"}` : "Chưa có trưởng phòng"}</p></div>
-                <span className="rounded-full bg-primary-soft px-2.5 py-1 text-xs font-semibold text-primary">{members.length} người</span>
-              </div>
-              <div className="flex -space-x-1.5">
-                {members.slice(0, 8).map((m) => <Avatar key={m.id} name={m.full_name} className="size-8 ring-2 ring-white" />)}
-                {members.length > 8 ? <span className="grid size-8 place-items-center rounded-full bg-muted text-[11px] font-medium ring-2 ring-white">+{members.length - 8}</span> : null}
-                {members.length === 0 ? <span className="text-xs text-muted-foreground">Chưa có nhân viên</span> : null}
-              </div>
-              <div className="flex flex-wrap gap-1.5">{[...roleCount].map(([r, n]) => <Badge key={r} className="bg-muted text-foreground/80 ring-border">{ROLE_LABEL[r as keyof typeof ROLE_LABEL] ?? r} · {n}</Badge>)}</div>
-            </Link>
-          );
-        })}
-      </div>
-      {unassigned.length ? (
-        <section className="rounded-xl border border-dashed bg-card/60 p-5">
-          <h2 className="mb-2 text-[15px] font-semibold">Chưa thuộc phòng ban nào ({unassigned.length})</h2>
-          <ul className="flex flex-wrap gap-2 text-sm">{unassigned.map((s) => <li key={s.id} className="flex items-center gap-2 rounded-full border bg-card px-3 py-1"><Avatar name={s.full_name} className="size-5 text-[9px]" />{s.full_name}</li>)}</ul>
-          {canEdit ? <p className="mt-2 text-xs text-muted-foreground">Mở một phòng ban để thêm nhân viên vào.</p> : null}
-        </section>
-      ) : null}
+      {canEdit ? <Disclosure summary="Thêm phòng ban" icon={<Plus className="size-4" aria-hidden />}><EntityForm entity="department" fields={e.fields(L)} /></Disclosure> : null}
+
+      <form action="/phong-ban" method="get" role="search" aria-label="Tìm và lọc phòng ban" className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <input name="q" defaultValue={q.q} placeholder="Tìm theo tên phòng ban…" aria-label="Tìm theo tên phòng ban" className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm" />
+        </div>
+        <select name="trang-thai" defaultValue={q.active === true ? "dang-hoat-dong" : q.active === false ? "ngung" : ""} aria-label="Lọc theo trạng thái phòng" className={SELECT}>
+          <option value="">Mọi trạng thái</option><option value="dang-hoat-dong">Đang hoạt động</option><option value="ngung">Ngừng hoạt động</option>
+        </select>
+        <button className="h-10 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90">Lọc</button>
+        {filtered ? <Link href="/phong-ban" className="px-2 text-sm text-muted-foreground underline">Xóa lọc</Link> : null}
+      </form>
+
+      {res.rows.length === 0 ? <EmptyState title="Không có phòng ban phù hợp" description={filtered ? "Thử bỏ bộ lọc hoặc đổi từ khóa." : "Thêm phòng ban đầu tiên ở khung phía trên."} /> : (
+        <div className="flex flex-col gap-3">
+          <div className={TABLE}>
+            <table className="w-full min-w-[720px] text-sm" data-testid="department-table">
+              <thead className={THEAD}>
+                <tr>
+                  <SortTh label="Tên phòng" col="name" sort={q.sort} dir={q.dir} href={(c, d) => params({ sort: c, dir: d, page: 1 })} />
+                  <th scope="col" className="px-3.5 py-2.5">Người quản lý</th>
+                  <SortTh label="Số thành viên" col="members" sort={q.sort} dir={q.dir} href={(c, d) => params({ sort: c, dir: d, page: 1 })} />
+                  <SortTh label="Số chức vụ đang dùng" col="positions" sort={q.sort} dir={q.dir} href={(c, d) => params({ sort: c, dir: d, page: 1 })} />
+                  <SortTh label="Trạng thái" col="status" sort={q.sort} dir={q.dir} href={(c, d) => params({ sort: c, dir: d, page: 1 })} />
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {res.rows.map((d) => (
+                  <tr key={d.id} data-dept={d.id} className="hover:bg-muted/30">
+                    <td className="px-3.5 py-2.5"><Link href={`/phong-ban/${d.id}`} className="font-medium text-primary hover:underline" data-testid="dept-link">{d.name}</Link></td>
+                    <td className="px-3.5 py-2.5">{d.managers.length ? d.managers.map((m) => <span key={m.id} className="mr-2 inline-block">{m.name}{m.position ? <span className="text-xs text-muted-foreground"> ({m.position})</span> : null}</span>) : <span className="text-muted-foreground">Chưa có</span>}</td>
+                    <td className="px-3.5 py-2.5 tabular-nums"><Link href={`/nhan-su?phong=${d.id}`} className="hover:text-primary hover:underline">{d.member_count}</Link></td>
+                    <td className="px-3.5 py-2.5 tabular-nums">{d.position_count}</td>
+                    <td className="px-3.5 py-2.5">{d.active ? <Badge className="bg-emerald-50 text-emerald-800 ring-emerald-300">Đang hoạt động</Badge> : <Badge className="bg-neutral-100 text-neutral-700 ring-neutral-300">Ngừng hoạt động</Badge>}</td>
+                  </tr>))}
+              </tbody>
+            </table>
+          </div>
+          <Pager total={res.total} page={q.page} size={q.size} href={(n) => `/phong-ban${params({ page: n })}`} />
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">Danh mục phòng hiện là danh sách phẳng. Sơ đồ tổ chức phân cấp cần thêm quan hệ cha–con (cột departments.parent_id).</p>
     </div>
   );
 }

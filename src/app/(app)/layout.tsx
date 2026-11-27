@@ -44,9 +44,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
     groups.push({ label: "Tài chính", items: [{ href: "/thu-chi", label: "Thu chi & công nợ", icon: "finance" }] });
     const hr: NavItem[] = [{ href: "/cham-cong", label: "Chấm công", icon: "attendance" }, { href: "/luong", label: "Bảng lương", icon: "payroll" }];
-    if (can(ctx, "users.manage") || hasRole(ctx, "manager")) hr.unshift({ href: "/nhan-su", label: "Nhân viên", icon: "people" });
-    hr.push({ href: "/phong-ban", label: "Phòng ban", icon: "department" });
-    if (can(ctx, "users.manage")) hr.push({ href: "/chuc-vu", label: "Chức vụ", icon: "position" });
+    hr.unshift({ href: "/nhan-su", label: "Nhân viên", icon: "people" });
+    hr.push({ href: "/phong-ban", label: "Phòng ban", icon: "department" }, { href: "/chuc-vu", label: "Chức vụ", icon: "position" });
     groups.push({ label: "Nhân sự", items: hr });
     groups.push({ label: "Hệ thống", items: [
       { href: "/thong-bao", label: "Thông báo", icon: "bell", badge: unread ?? undefined }, { href: "/tro-chuyen", label: "Trò chuyện", icon: "chat" },

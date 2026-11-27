@@ -316,26 +316,34 @@ test("Dashboard có biểu đồ thống kê theo quyền; báo cáo bán hàng 
   await expect(h.getByText("Bạn chưa có quyền xem mục này")).toBeVisible();
 });
 
-test("Phòng ban chứa nhân viên: xem cơ cấu, thêm / đặt trưởng phòng / gỡ nhân viên (chỉ quản trị)", async ({ browser }) => {
+test("Phòng ban chứa nhân viên: xem cơ cấu, thêm / đặt quản lý / gỡ nhân viên (chỉ quản trị)", async ({ browser }) => {
   const a = await login(browser, "admin@hanamedia.local");
   await a.goto("/phong-ban");
-  await expect(a.getByTestId("department-cards")).toContainText("Bộ phận Content");
-  await a.getByRole("link", { name: /Bộ phận Content/ }).click();
+  await expect(a.getByTestId("department-table")).toContainText("Bộ phận Content");
+  await a.getByTestId("dept-link").filter({ hasText: "Bộ phận Content" }).click();
+  await a.getByTestId("dtab-thanh-vien").click();
   await expect(a.getByTestId("department-members")).toContainText("Hiếu");
   await expect(a.getByTestId("department-members")).not.toContainText("Hòa");
-  await a.getByLabel("Nhân viên *").selectOption({ label: "Hòa — Editor" });
+  await expect(a.getByLabel("Nhân viên *").locator("option", { hasText: "Hòa" })).toHaveCount(1);
+  const staffOpts = await a.getByLabel("Nhân viên *").locator("option").allTextContents();
+  await a.getByLabel("Nhân viên *").selectOption({ index: staffOpts.findIndex((o) => /Hòa/.test(o)) });
   await a.getByRole("button", { name: "Thêm vào phòng" }).click();
   await expect(a.getByTestId("department-members")).toContainText("Hòa");
-  const row = a.getByTestId("department-members").locator("tr", { hasText: "Hòa" });
-  await row.getByRole("button", { name: "Đặt làm trưởng phòng" }).click();
-  await expect(a.getByText("Trưởng phòng: Hòa").first()).toBeVisible();
+  await a.getByTestId("dtab-quan-ly").click();
+  await expect(a.getByLabel("Thành viên của phòng *").locator("option", { hasText: "Hòa" })).toHaveCount(1);
+  const opts = await a.getByLabel("Thành viên của phòng *").locator("option").allTextContents();
+  await a.getByLabel("Thành viên của phòng *").selectOption({ index: opts.findIndex((o) => /Hòa/.test(o)) });
+  await a.getByRole("button", { name: "Lưu người quản lý" }).click();
+  await expect(a.getByTestId("managers")).toContainText("Hòa");
+  await a.getByTestId("dtab-thanh-vien").click();
   await a.getByTestId("department-members").locator("tr", { hasText: "Hòa" }).getByRole("button", { name: "Gỡ khỏi phòng" }).click();
   await expect(a.getByTestId("department-members")).not.toContainText("Hòa");
 
   const l = await login(browser, "leader@hanamedia.local");
   await l.goto("/phong-ban");
-  await expect(l.getByTestId("department-cards")).toContainText("Bộ phận Edit");
-  await l.getByRole("link", { name: /Bộ phận Edit/ }).click();
+  await expect(l.getByTestId("department-table")).toContainText("Bộ phận Edit");
+  await l.getByTestId("dept-link").filter({ hasText: "Bộ phận Edit" }).click();
+  await l.getByTestId("dtab-thanh-vien").click();
   await expect(l.getByTestId("department-members")).toContainText("Duy");
   await expect(l.getByRole("button", { name: "Thêm vào phòng" })).toHaveCount(0);
 });
