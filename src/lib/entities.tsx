@@ -74,6 +74,11 @@ export type Entity = {
   description?: string;
   filter?: { col: string; label: string; options: [string, string][] };
   defaults?: Row;
+  /** false = không có nút xuất CSV */
+  exportable?: boolean;
+  /** Chế độ xem Kanban: cột theo `col`, chuyển cột bằng RPC. */
+  kanban?: { col: string; columns: { value: string; label: string; color: string; locked?: boolean }[]; rpc: string; idArg: string; statusArg: string; prompt?: { value: string; text: string; arg: string };
+             card: (r: Row, L: Lookups) => { title: string; sub?: string; meta?: string }; amount?: (r: Row) => number };
 };
 
 const simple = (key: string, slug: string, table: string, title: string, singular: string, perm: [string, string], soft = true): Entity => ({
@@ -90,6 +95,11 @@ export const ENTITIES: Entity[] = [
     key: "lead", slug: "lead", table: "leads", title: "Lead", singular: "lead", view: "crm.view", write: "crm.manage", soft: true,
     searchCols: ["first_name", "last_name", "company"], order: ["created_at", false], lookups: ["industries", "lead_sources", "people"], creatable: true,
     description: "Người / công ty tiềm năng chưa được xác nhận. Khi đạt chuẩn, chuyển đổi thành tài khoản + liên hệ + cơ hội.",
+    kanban: {
+      col: "status", rpc: "set_lead_status", idArg: "p_id", statusArg: "p_status",
+      columns: Object.entries(LEAD_STATUS).map(([value, v]) => ({ value, label: v[0], color: ({ new: "#2f8fb8", contacted: "#4f5bd5", working: "#e0a22a", qualified: "#0f6b3f", nurturing: "#7a5ac8", unqualified: "#c9ccd1", converted: "#4aa39a" } as Record<string, string>)[value] ?? "#8a8f98", locked: value === "converted" })),
+      card: (r) => ({ title: `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim(), sub: String(r.company ?? "") || undefined, meta: [RATING[String(r.rating)]?.[0], (r.phones as string[])?.[0]].filter(Boolean).join(" · ") }),
+    },
     filter: { col: "status", label: "Trạng thái", options: Object.entries(LEAD_STATUS).map(([k, v]) => [k, v[0]]) },
     fields: (L) => [
       { name: "title", label: "Xưng hô", type: "select", options: SALUTATION },
@@ -164,6 +174,12 @@ export const ENTITIES: Entity[] = [
     key: "opportunity", slug: "co-hoi", table: "opportunities", title: "Cơ hội", singular: "cơ hội", view: "crm.view", write: "crm.manage", soft: true,
     searchCols: ["name"], order: ["created_at", false], lookups: ["accounts", "contacts", "price_books", "people"], creatable: true,
     description: "Cơ hội bán hàng: thêm sản phẩm / dịch vụ → báo giá → hợp đồng.",
+    kanban: {
+      col: "stage", rpc: "set_opportunity_stage", idArg: "p_id", statusArg: "p_stage", prompt: { value: "lost", text: "Lý do thua cơ hội?", arg: "p_lost_reason" },
+      columns: Object.entries(STAGE_OPP).map(([value, v]) => ({ value, label: v[0], color: ({ needs_analysis: "#2f8fb8", presentation: "#4f5bd5", negotiation: "#e0a22a", won: "#0f6b3f", lost: "#c9ccd1" } as Record<string, string>)[value] ?? "#8a8f98", locked: value === "won" })),
+      card: (r, L) => ({ title: String(r.name), sub: nameOf(L, "accounts", r.account_id), meta: `${money(r.expected_revenue as number)} · ${Number(r.win_probability ?? 0)}%` }),
+      amount: (r) => Number(r.expected_revenue ?? 0),
+    },
     filter: { col: "stage", label: "Giai đoạn", options: Object.entries(STAGE_OPP).map(([k, v]) => [k, v[0]]) },
     fields: (L) => [
       { name: "name", label: "Tên cơ hội *", required: true, wide: true },

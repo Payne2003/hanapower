@@ -436,6 +436,31 @@ begin
     end if;
   end loop;
 
+  -- ---------------- Ghi chú trên bản ghi + lịch sử hoạt động -----------------
+  for i in 1..36 loop
+    n := (array[6, 4, 5, 9, 13])[1 + i % 5];
+    insert into public.crm_notes (id, org_id, entity_type, entity_id, body, pinned, created_by, created_at) values
+      (pg_temp.did(35, i), v_org, (array['lead', 'account', 'contact', 'opportunity', 'project'])[1 + i % 5],
+       case i % 5 when 0 then pg_temp.did(6, 1 + i % 24) when 1 then acc[1 + i % 15] when 2 then con[1 + i % 24] when 3 then pg_temp.did(9, 1 + i % 14) else proj[1 + i % 5] end,
+       (array['Khách hẹn gặp trực tiếp tuần sau, chuẩn bị bản demo video mẫu.','Đã gửi báo giá qua email, chờ phản hồi.','Khách quan tâm gói quản lý kênh theo tháng, cần thêm case study.','Liên hệ lần 2: khách yêu cầu giảm 5% nếu ký trọn gói 6 tháng.','Đã thống nhất kịch bản, bắt đầu quay từ thứ Hai.','Cần xuất hóa đơn trước ngày 25 hằng tháng.'])[1 + i % 6],
+       i % 9 = 0, usr[1 + i % 3], now() - (i % 20) * interval '1 day' - (i % 7) * interval '3 hours') on conflict (id) do nothing;
+  end loop;
+  if not exists (select 1 from public.audit_logs where action = 'opportunity.stage' and details->>'demo' = 'true') then
+    for i in 1..14 loop
+      insert into public.audit_logs (org_id, actor_id, action, entity_type, entity_id, details, created_at) values
+        (v_org, usr[1 + i % 3], 'opportunity.stage', 'opportunity', pg_temp.did(9, i), jsonb_build_object('from', 'needs_analysis', 'to', case when o_stages[i] = 'lost' then 'lost' else 'presentation' end, 'demo', true), now() - (20 + i) * interval '1 day'),
+        (v_org, usr[1 + i % 3], 'opportunity.stage', 'opportunity', pg_temp.did(9, i), jsonb_build_object('from', 'presentation', 'to', case when o_stages[i] in ('negotiation', 'won') then 'negotiation' else 'presentation' end, 'demo', true), now() - (10 + i) * interval '1 day');
+    end loop;
+    for i in 2..13 loop
+      insert into public.audit_logs (org_id, actor_id, action, entity_type, entity_id, details, created_at) values
+        (v_org, usr[2], 'quote.create', 'quote', pg_temp.did(10, i), jsonb_build_object('code', (select code from public.quotes where id = pg_temp.did(10, i)), 'demo', true), now() - (8 + i) * interval '1 day');
+    end loop;
+    for k in 1..5 loop
+      insert into public.audit_logs (org_id, actor_id, action, entity_type, entity_id, details, created_at) values
+        (v_org, usr[1], 'contract.status', 'contract', pg_temp.did(11, k), jsonb_build_object('from', 'pending', 'to', 'active', 'demo', true), now() - (60 - k * 10) * interval '1 day');
+    end loop;
+  end if;
+
   -- ---------------- Thông báo, nhật ký -----------------
   if not exists (select 1 from public.audit_logs where action = 'demo.seed' and org_id = v_org) then
   for i in 1..13 loop

@@ -15,6 +15,7 @@ import { EntityForm, DeleteEntityButton } from "@/components/entity-form";
 import { OpportunityLineForm, DeleteLineButton } from "@/components/line-forms";
 import { RpcButton } from "@/components/rpc-button";
 import { RpcForm } from "@/components/rpc-form";
+import { NotesPanel } from "@/components/notes-panel";
 
 export const metadata: Metadata = { title: "Cơ hội" };
 
@@ -105,6 +106,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
         </Card>
       ) : null}
 
+      <NotesPanel type="opportunity" id={id} canWrite={canWrite} userId={ctx.user_id} people={L.people ?? []} isManager={ctx.roles.includes("manager") || ctx.roles.includes("system_admin")} />
       <Card>
         <CardHeader><CardTitle>Thông tin cơ hội</CardTitle></CardHeader>
         <CardContent><EntityForm entity={e.key} id={id} fields={fields} canWrite={canWrite && !closed} /></CardContent>

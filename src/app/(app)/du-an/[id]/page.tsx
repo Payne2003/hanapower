@@ -17,6 +17,7 @@ import { RpcButton } from "@/components/rpc-button";
 import { RpcForm } from "@/components/rpc-form";
 import { Disclosure } from "@/components/disclosure";
 import { Badge } from "@/components/ui/badge";
+import { NotesPanel } from "@/components/notes-panel";
 
 export const metadata: Metadata = { title: "Dự án" };
 type Sp = { tab?: string };
@@ -88,6 +89,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
               </CardContent>
             </Card>
           ) : null}
+          <NotesPanel type="project" id={id} canWrite userId={ctx.user_id} people={L.people ?? []} isManager={manage} />
           {manage ? <ProjectEdit p={p} L={L} id={id} /> : null}
         </>
       ) : null}

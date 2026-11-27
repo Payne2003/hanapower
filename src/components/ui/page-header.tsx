@@ -31,16 +31,16 @@ export function StatCard({ label, value, icon, tone = "green", hint, testId, hre
     slate: "bg-slate-100 text-slate-700",
   };
   const body = (
-    <div className="flex h-full items-start gap-3 rounded-xl border bg-card p-4 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-pop)]">
+    <div className="flex h-full min-w-0 items-start gap-3 rounded-xl border bg-card p-4 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-pop)]">
       {icon ? <div className={cn("grid size-10 shrink-0 place-items-center rounded-lg [&_svg]:size-5", tones[tone])}>{icon}</div> : null}
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight" data-testid={testId}>{value}</p>
+        <p className="mt-0.5 break-words text-xl font-semibold tabular-nums tracking-tight sm:text-2xl" data-testid={testId}>{value}</p>
         {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       </div>
     </div>
   );
-  return href ? <a href={href} className="block h-full rounded-xl">{body}</a> : body;
+  return href ? <a href={href} className="block h-full min-w-0 rounded-xl">{body}</a> : body;
 }
 
 /** Ảnh đại diện chữ cái đầu. */

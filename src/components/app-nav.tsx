@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Clapperboard, FileText, Bell, MessagesSquare, Users, Settings, Menu, X, LogOut, UserPlus, Building2, Contact, Target,
   FileSignature, ScrollText, ShoppingCart, Package, Tags, Ruler, BookOpen, FolderKanban, Handshake, Wallet, CheckSquare, Network,
-  BadgeCheck, CalendarCheck, Banknote, Briefcase, Layers, Megaphone, Factory,
+  BadgeCheck, CalendarCheck, Banknote, Briefcase, Layers, Megaphone, Factory, BarChart3, Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/page-header";
@@ -41,13 +41,16 @@ const ICONS = {
   layers: Layers,
   source: Megaphone,
   industry: Factory,
+  chart: BarChart3,
+  search: Search,
 } as const;
 
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; badge?: number };
 export type NavGroup = { label?: string; items: NavItem[] };
 
-export function AppNav({ groups, orgName, userName, roleLabel, logoutAction }: {
+export function AppNav({ groups, orgName, userName, roleLabel, logoutAction, searchable = false }: {
   groups: NavGroup[];
+  searchable?: boolean;
   orgName: string;
   userName: string;
   roleLabel: string;
@@ -78,6 +81,12 @@ export function AppNav({ groups, orgName, userName, roleLabel, logoutAction }: {
 
   const nav = (
     <nav aria-label="Điều hướng chính" className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
+      {searchable ? (
+        <form action="/tim-kiem" method="get" role="search" className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <input name="q" type="search" placeholder="Tìm kiếm nhanh…" aria-label="Tìm kiếm nhanh" className="h-9 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm placeholder:text-muted-foreground/80 focus-visible:border-ring focus-visible:outline-2 focus-visible:outline-ring/40" />
+        </form>
+      ) : null}
       {groups.map((g, gi) => (
         <div key={g.label ?? gi} className="flex flex-col gap-0.5">
           {g.label ? <p className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">{g.label}</p> : null}
