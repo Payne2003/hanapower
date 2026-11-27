@@ -18,6 +18,7 @@ export function CrmImportWizard({ slug, label }: { slug: string; label: string }
     warn: fresh.filter((l) => l.warnings.length).length,
   };
   const needAccounts = slug === "lien-he" && fresh.some((l) => l.row && "account_name" in l.row);
+  const needLookups = slug === "san-pham" && fresh.some((l) => l.row && ("category_name" in l.row || "unit_name" in l.row));
 
   return (
     <div className="flex flex-col gap-5">
@@ -74,6 +75,9 @@ export function CrmImportWizard({ slug, label }: { slug: string; label: string }
               <input type="hidden" name="rows" value={JSON.stringify(fresh.map((l) => l.row))} />
               {needAccounts ? (
                 <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="create_accounts" defaultChecked className="mt-0.5 size-4 accent-[var(--primary)]" /> Tự tạo tài khoản công ty cho các liên hệ chưa có công ty trong hệ thống</label>
+              ) : null}
+              {needLookups ? (
+                <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="create_accounts" defaultChecked className="mt-0.5 size-4 accent-[var(--primary)]" /> Tự tạo danh mục / đơn vị tính chưa có trong hệ thống</label>
               ) : null}
               <FormMessage state={result} />
               <div><SubmitButton disabled={counts.new === 0} pendingText="Đang nhập…">{counts.new ? `Nhập ${counts.new} bản ghi` : "Không có bản ghi mới"}</SubmitButton></div>

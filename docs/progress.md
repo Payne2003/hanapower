@@ -34,7 +34,7 @@ Mục tiêu của đợt này: **có đủ khung menu / trang giống CRM Apollo
 |---|---|
 | `tsc` strict, ESLint, `next build` | Đạt |
 | Unit | 7/7 |
-| CSDL (Postgres thật, migration `0400`–`0850`) | **43/43** (18 quy trình video + 21 CRM / dự án / tài chính / cộng tác viên / lương) |
+| CSDL (Postgres thật, migration `0400`–`0860`) | **45/45** (18 quy trình video + 21 CRM / dự án / tài chính / cộng tác viên / lương) |
 | E2E Playwright | **14/14** (7 mới: mở mọi trang, tài khoản + chuyển đổi lead, cơ hội → báo giá → hợp đồng → dự án, quyền xem tiền của dự án, chi phí duyệt → thanh toán, cộng tác viên, lương) |
 
 ### Bổ sung: báo giá PDF và nhập khách hàng từ Excel (2026-11-27, migration `0840`–`0850`)
@@ -43,11 +43,20 @@ Mục tiêu của đợt này: **có đủ khung menu / trang giống CRM Apollo
 - **Nhập Excel / CSV** cho **Tài khoản, Liên hệ, Lead** (`/nhap-khach-hang/<loại>`, nút "Nhập từ Excel" ở mỗi danh sách; có **tệp mẫu** để tải): nhận cột theo tên (có / không dấu, thứ tự tùy ý, bỏ qua dòng tiêu đề phụ phía trên), chuẩn hóa số điện thoại (+84, mất số 0 đầu do Excel), email, ngày sinh, số tiền, tách họ tên; khớp Ngành / Nguồn / Người phụ trách / Công ty theo tên; **xem trước** từng dòng (mới / trùng / lỗi + cảnh báo) rồi mới ghi; loại trùng với dữ liệu có sẵn **và** trong tệp (tài khoản: MST hoặc tên; liên hệ: email hoặc họ tên + công ty; lead: email, điện thoại hoặc họ tên + công ty); CSDL kiểm tra lại quyền và trùng trong một giao dịch; liên hệ có thể tự tạo công ty chưa có. Nhập lại cùng một tệp không tạo trùng.
 - Kiểm thử thêm: unit 28 (số tiền bằng chữ, PDF nhiều trang đọc lại bằng `pdftotext`, chuẩn hóa / kế hoạch nhập, đọc xlsx và csv), CSDL 43 (nhập tài khoản / liên hệ / lead, quyền, thông tin công ty), E2E 16 (tải PDF hợp lệ; nhập Excel có xem trước, trùng, lỗi, nhập lại).
 
+### Bổ sung: hợp đồng PDF và nhập sản phẩm từ Excel (migration `0860`)
+
+- **Hợp đồng PDF** (`/hop-dong/<id>/pdf`, nút "Xem PDF" / "Tải PDF"): đầu trang công ty, Bên A (khách: tên, MST, địa chỉ, người đại diện + chức danh) và Bên B (công ty + tài khoản ngân hàng), Điều 1 hạng mục (lấy từ báo giá đã chấp nhận), Điều 2 giá trị + bằng chữ + **tiến độ thanh toán từ các mốc của dự án** (nếu đã có dự án), Điều 3–11 điều khoản chung, "Điều khoản bổ sung" từ ghi chú hợp đồng, ô chữ ký kèm ngày ký; hợp đồng chưa hiệu lực có dòng đỏ "BẢN NHÁP — CHƯA CÓ HIỆU LỰC". **Điều khoản chung là mẫu thông dụng, chưa qua pháp chế / luật sư — cần rà soát trước khi dùng để ký** (trang hợp đồng có ghi chú nhắc).
+- **Sửa hợp đồng** (`update_contract`): nháp / chờ hiệu lực sửa được ngày hiệu lực, hết hạn, điều khoản bổ sung; đã hiệu lực chỉ ghi nhận người đại diện khách ký, ngày khách ký, ngày công ty ký (giá trị không đổi ở đây — cần phụ lục, chưa có).
+- **Nhập sản phẩm từ Excel / CSV** (`/nhap-khach-hang/san-pham`, nút "Nhập từ Excel" ở trang Sản phẩm, có tệp mẫu): nhận cột Tên / Mã / Danh mục / Đơn vị / Giá / Mô tả / Trạng thái (tiêu đề tiếng Việt thường gặp), giá kiểu `4.000.000` hoặc `4,000,000`, khớp danh mục & đơn vị theo tên và **tùy chọn tự tạo danh mục / đơn vị chưa có**, loại trùng theo tên hoặc mã (với dữ liệu có sẵn và trong tệp), giá hỏng → báo lỗi dòng, thiếu giá → đặt 0 kèm cảnh báo. Dòng trùng bị **bỏ qua** (chưa có chế độ cập nhật giá hàng loạt).
+- Tái cấu trúc: phần dùng chung của PDF (font, đầu trang, bảng, tổng tiền, chữ ký, số trang) nằm ở `src/lib/pdf-common.ts`; báo giá và hợp đồng dùng chung.
+- `requireContext` thử lại tối đa 3 lần khi tầng API trả lỗi thoáng qua (đã gặp hai lần trong E2E: một lỗi 500 khi lấy thông tin người dùng, không tái hiện được lúc chạy riêng) và nêu rõ mã lỗi khi thông báo rỗng.
+- Kiểm thử: unit 34, CSDL 45, E2E 18; PDF hợp đồng đọc lại bằng `pdftotext` và xem ảnh trang.
+
 ### Giới hạn đã biết (chưa làm hoặc làm mức cơ bản)
 
 - **Thuế TNCN không tự tính** — kế toán nhập tay thành một dòng "Thuế TNCN" (biểu thuế cần cập nhật theo quy định hiện hành). Tỷ lệ bảo hiểm mặc định 10,5% chỉnh được ở Bảng lương → Thiết lập; cần kế toán xác nhận.
 - Lãi / lỗ dự án **chưa gồm lương** và chi phí chung không gắn dự án.
-- Hợp đồng chưa có bản PDF / tệp đính kèm; chưa có phụ lục / thay đổi giá trị hợp đồng; chưa có tồn kho / giao hàng cho đơn hàng.
+- Hợp đồng chưa có tệp đính kèm (bản ký / scan); chưa có phụ lục / thay đổi giá trị hợp đồng; chưa có tồn kho / giao hàng cho đơn hàng.
 - Các danh mục CRM chỉ có tìm kiếm + lọc 1 cột; chưa có theo dõi người theo dõi (follower), lịch sử hoạt động từng khách, nhắc việc tự động gửi (đã lưu `reminder_at`, chưa có tiến trình gửi).
 - Xuất dữ liệu dạng CSV UTF-8 (mở bằng Excel); số tài khoản có số 0 đầu có thể bị Excel cắt — nhập cột dạng Text.
 - Chưa thử trên Windows thật / Vercel thật với các migration mới: cần chạy workflow "Cập nhật cơ sở dữ liệu cloud" sau khi gộp.

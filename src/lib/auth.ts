@@ -12,10 +12,15 @@ import type { AppRole, MyContext } from "@/lib/types";
  */
 export const requireContext = cache(async (): Promise<MyContext> => {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.rpc("get_my_context");
+  let { data, error } = await supabase.rpc("get_my_context");
+  // Lỗi thoáng qua của tầng API (PostgREST nạp lại schema, cổng 502/503, mạng chập chờn): thử lại tối đa 3 lần trước khi báo lỗi.
+  for (let i = 0; i < 3 && error && !/jwt|401|PGRST30/i.test(`${error.code} ${error.message}`); i++) {
+    await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+    ({ data, error } = await supabase.rpc("get_my_context"));
+  }
   if (error) {
     if (/jwt|401|PGRST30/i.test(`${error.code} ${error.message}`)) redirect("/dang-nhap");
-    throw new Error(`Không tải được thông tin người dùng: ${error.message}`);
+    throw new Error(`Không tải được thông tin người dùng: ${error.message || error.code || JSON.stringify(error).slice(0, 200) || "không rõ nguyên nhân"}`);
   }
   if (!data) redirect("/dang-nhap");
   if (!data || !(data as MyContext).is_active) redirect("/dang-nhap?loi=khong-hoat-dong");

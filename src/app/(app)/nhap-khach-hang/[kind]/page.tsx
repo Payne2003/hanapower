@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { CrmImportWizard } from "../wizard";
 
 export const metadata: Metadata = { title: "Nhập từ Excel" };
-const TITLE: Record<string, string> = { "tai-khoan": "Tài khoản", "lien-he": "Liên hệ", lead: "Lead" };
+const TITLE: Record<string, string> = { "tai-khoan": "Tài khoản", "lien-he": "Liên hệ", lead: "Lead", "san-pham": "Sản phẩm / dịch vụ" };
 
 export default async function CrmImportPage({ params }: { params: Promise<{ kind: string }> }) {
   const { kind: slug } = await params;

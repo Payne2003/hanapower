@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pdfkit"],
   outputFileTracingIncludes: {
     "/bao-gia/[id]/pdf": ["./assets/fonts/**/*", "./node_modules/pdfkit/js/data/**/*"],
+    "/hop-dong/[id]/pdf": ["./assets/fonts/**/*", "./node_modules/pdfkit/js/data/**/*"],
   },
   async headers() {
     return [

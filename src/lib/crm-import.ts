@@ -2,14 +2,14 @@
 // Phần thuần (planCrmImport, chuẩn hóa) kiểm thử được; đọc tệp dùng exceljs.
 import { cellText, norm, toISODate } from "./sheet-import";
 
-export type ImportKind = "accounts" | "contacts" | "leads";
-export const KIND_BY_SLUG: Record<string, ImportKind> = { "tai-khoan": "accounts", "lien-he": "contacts", lead: "leads" };
-export const KIND_LABEL: Record<ImportKind, string> = { accounts: "tài khoản (công ty)", contacts: "liên hệ", leads: "lead" };
-export const SLUG_BY_KIND: Record<ImportKind, string> = { accounts: "tai-khoan", contacts: "lien-he", leads: "lead" };
+export type ImportKind = "accounts" | "contacts" | "leads" | "products";
+export const KIND_BY_SLUG: Record<string, ImportKind> = { "tai-khoan": "accounts", "lien-he": "contacts", lead: "leads", "san-pham": "products" };
+export const KIND_LABEL: Record<ImportKind, string> = { accounts: "tài khoản (công ty)", contacts: "liên hệ", leads: "lead", products: "sản phẩm / dịch vụ" };
+export const SLUG_BY_KIND: Record<ImportKind, string> = { accounts: "tai-khoan", contacts: "lien-he", leads: "lead", products: "san-pham" };
 
 type Field =
   | "name" | "full_name" | "last_name" | "first_name" | "name_or_first" | "salutation" | "company" | "job_title" | "type" | "industry" | "tax_code" | "phones" | "emails" | "websites"
-  | "address" | "employees" | "revenue" | "owner" | "note" | "dob" | "status" | "rating" | "source";
+  | "address" | "employees" | "revenue" | "owner" | "note" | "dob" | "status" | "rating" | "source" | "code" | "category" | "unit" | "price" | "description" | "active";
 
 // Tên cột (đã bỏ dấu, chữ thường) → trường. Mỗi loại dữ liệu có bộ riêng để tránh nhầm "Tên".
 const ALIASES: Record<ImportKind, Record<string, Field>> = {
@@ -32,6 +32,14 @@ const ALIASES: Record<ImportKind, Record<string, Field>> = {
     "dien thoai": "phones", "so dien thoai": "phones", sdt: "phones", phone: "phones", mobile: "phones", email: "emails", "e-mail": "emails", mail: "emails",
     "ngay sinh": "dob", "sinh nhat": "dob", dob: "dob", "nguoi phu trach": "owner", "phu trach": "owner", owner: "owner", "ghi chu": "note", note: "note",
   },
+  products: {
+    "ten san pham": "name", "san pham": "name", "ten dich vu": "name", "dich vu": "name", "ten hang muc": "name", "hang muc": "name", ten: "name", name: "name", product: "name",
+    ma: "code", "ma san pham": "code", "ma dich vu": "code", sku: "code", code: "code",
+    "danh muc": "category", nhom: "category", "nhom san pham": "category", loai: "category", category: "category",
+    "don vi": "unit", "don vi tinh": "unit", dvt: "unit", unit: "unit",
+    gia: "price", "gia niem yet": "price", "don gia": "price", "gia ban": "price", price: "price", "list price": "price",
+    "mo ta": "description", description: "description", "ghi chu": "description", "trang thai": "active", "dang ban": "active", active: "active",
+  },
   leads: {
     "ho ten": "full_name", "ho va ten": "full_name", "ten khach": "full_name", "ten lien he": "full_name", "full name": "full_name", name: "full_name",
     ho: "last_name", "ho dem": "last_name", "ho va ten dem": "last_name", "last name": "last_name", ten: "name_or_first", "first name": "first_name",
@@ -47,7 +55,7 @@ const ALIASES: Record<ImportKind, Record<string, Field>> = {
 export type RawRow = { rowNo: number; cells: Partial<Record<Field, string>> };
 export type Parsed = { rows: RawRow[]; sheet: string; unknownHeaders: string[]; recognized: string[] };
 
-const KEY_FIELDS: Record<ImportKind, Field[]> = { accounts: ["name"], contacts: ["full_name", "last_name", "name_or_first"], leads: ["full_name", "last_name", "name_or_first"] };
+const KEY_FIELDS: Record<ImportKind, Field[]> = { accounts: ["name"], products: ["name"], contacts: ["full_name", "last_name", "name_or_first"], leads: ["full_name", "last_name", "name_or_first"] };
 
 function scoreHeader(kind: ImportKind, vals: string[]) {
   const map: Record<number, Field> = {};
@@ -163,11 +171,14 @@ export type ImportCtx = {
   people: { id: string; full_name: string }[];
   industries: [string, string][];
   sources: [string, string][];
+  categories: [string, string][];
+  units: [string, string][];
   accounts: { id: string; name: string; tax_code: string | null }[];
   existing: {
     accountNames: Set<string>; accountTax: Set<string>;
     contactEmails: Set<string>; contactNameAcc: Set<string>;
     leadEmails: Set<string>; leadPhones: Set<string>; leadNameCompany: Set<string>;
+    productCodes: Set<string>; productNames: Set<string>;
   };
 };
 
@@ -182,6 +193,7 @@ export function planCrmImport(kind: ImportKind, raw: RawRow[], ctx: ImportCtx): 
   const out: PlanLine[] = [];
 
   for (const r of raw) {
+    if (kind === "products") { out.push(planProduct(r, ctx, seen)); continue; }
     const c = r.cells;
     const warnings: string[] = [];
     const row: ImportRow = {};
@@ -259,8 +271,32 @@ export function planCrmImport(kind: ImportKind, raw: RawRow[], ctx: ImportCtx): 
   return out;
 }
 
+const ACTIVE_NO = new Set(["ngung", "ngung ban", "khong", "no", "0", "false", "inactive", "het hang"]);
+
+function planProduct(r: RawRow, ctx: ImportCtx, seen: Set<string>): PlanLine {
+  const c = r.cells;
+  const warnings: string[] = [];
+  if (!c.name) return { rowNo: r.rowNo, label: "(không có tên)", status: "error", warnings: ["Thiếu tên sản phẩm / dịch vụ"], row: null };
+  const row: ImportRow = { name: c.name };
+  if (c.code) row.code = c.code;
+  const price = parseMoney(c.price);
+  if (price === "bad") return { rowNo: r.rowNo, label: c.name, status: "error", warnings: [`Giá "${c.price}" không đọc được`], row: null };
+  if (price === null) { warnings.push("Chưa có giá niêm yết — đặt 0 ₫"); row.list_price = 0; } else row.list_price = price;
+  if (c.category) { const id = lookup(ctx.categories, c.category); if (id) row.category_id = id; else { row.category_name = c.category; warnings.push(`Danh mục "${c.category}" chưa có — tạo mới nếu bạn chọn bên dưới, nếu không để trống`); } }
+  if (c.unit) { const id = lookup(ctx.units, c.unit); if (id) row.unit_id = id; else { row.unit_name = c.unit; warnings.push(`Đơn vị "${c.unit}" chưa có — tạo mới nếu bạn chọn bên dưới, nếu không để trống`); } }
+  if (c.description) row.description = c.description;
+  if (c.active) row.is_active = !ACTIVE_NO.has(norm(c.active));
+  const nk = norm(c.name), ck = c.code ? norm(c.code) : "";
+  let dupe: string | null = null;
+  if (ctx.existing.productNames.has(nk) || (ck && ctx.existing.productCodes.has(ck))) dupe = "Đã có trong hệ thống (trùng tên hoặc mã)";
+  else if (seen.has(`n:${nk}`) || (ck && seen.has(`c:${ck}`))) dupe = "Trùng với một dòng khác trong tệp";
+  seen.add(`n:${nk}`); if (ck) seen.add(`c:${ck}`);
+  return dupe ? { rowNo: r.rowNo, label: c.name, status: "exists", warnings: [dupe, ...warnings], row: null } : { rowNo: r.rowNo, label: c.name, status: "new", warnings, row };
+}
+
 export const TEMPLATES: Record<ImportKind, { headers: string[]; sample: string[] }> = {
   accounts: { headers: ["Tên công ty", "Loại", "Ngành nghề", "Mã số thuế", "Điện thoại", "Email", "Website", "Địa chỉ", "Số nhân viên", "Doanh thu năm", "Người phụ trách", "Ghi chú"], sample: ["Công ty TNHH Ví Dụ", "Khách hàng", "Thương mại điện tử", "0312345678", "0901234567", "lienhe@vidu.vn", "https://vidu.vn", "Quận 7, TP.HCM", "50", "5000000000", "Leader Sản xuất", ""] },
   contacts: { headers: ["Họ và tên", "Xưng hô", "Công ty", "Chức danh", "Điện thoại", "Email", "Ngày sinh", "Người phụ trách", "Ghi chú"], sample: ["Nguyễn Thu Hà", "Chị", "Công ty TNHH Ví Dụ", "Giám đốc marketing", "0901234567", "ha@vidu.vn", "15/08/1990", "Leader Sản xuất", ""] },
+  products: { headers: ["Tên sản phẩm / dịch vụ", "Mã", "Danh mục", "Đơn vị", "Giá niêm yết", "Mô tả", "Trạng thái"], sample: ["Sản xuất video 3–5 phút", "SX-VIDEO", "Sản xuất video", "Video", "12000000", "Quay, dựng, âm thanh, màu hoàn chỉnh", "Đang bán"] },
   leads: { headers: ["Họ và tên", "Xưng hô", "Công ty", "Chức danh", "Trạng thái", "Mức độ", "Nguồn", "Ngành nghề", "Điện thoại", "Email", "Địa chỉ", "Người phụ trách", "Ghi chú"], sample: ["Trần Minh Quang", "Anh", "Studio Ví Dụ", "Giám đốc", "Mới", "Nóng", "Facebook", "Truyền thông / Quảng cáo", "0912000111", "quang@studio.vn", "Đà Nẵng", "Leader Sản xuất", ""] },
 };

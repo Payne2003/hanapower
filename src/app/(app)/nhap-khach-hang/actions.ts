@@ -9,7 +9,7 @@ import { KIND_BY_SLUG, SLUG_BY_KIND, parseCrmFile, planCrmImport, type ImportCtx
 import type { ActionResult } from "@/lib/types";
 
 export type CrmPreview = { kind: ImportKind; lines: PlanLine[]; sheet: string; fileName: string; recognized: string[]; unknown: string[] };
-export type CrmImportResult = { inserted: number; skipped: number; accounts_created: number };
+export type CrmImportResult = { inserted: number; skipped: number; accounts_created: number; lookups_created?: number };
 
 type SB = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 /** PostgREST trả tối đa 1000 dòng mỗi lần — đọc hết theo trang. */
@@ -27,15 +27,20 @@ async function fetchAll(supabase: SB, table: string, cols: string, soft = true):
 }
 
 async function buildCtx(supabase: SB, kind: ImportKind): Promise<ImportCtx> {
-  const [people, industries, sources, accounts] = await Promise.all([
+  const [people, industries, sources, categories, units, accounts] = await Promise.all([
     supabase.from("profiles").select("id, full_name").eq("is_active", true),
     supabase.from("industries").select("id, name").is("deleted_at", null),
     supabase.from("lead_sources").select("id, name").is("deleted_at", null),
-    fetchAll(supabase, "accounts", "id, name, tax_code"),
+    supabase.from("product_categories").select("id, name").is("deleted_at", null),
+    supabase.from("product_units").select("id, name").is("deleted_at", null),
+    kind === "accounts" || kind === "contacts" ? fetchAll(supabase, "accounts", "id, name, tax_code") : Promise.resolve([] as Record<string, unknown>[]),
   ]);
-  const ex: ImportCtx["existing"] = { accountNames: new Set(), accountTax: new Set(), contactEmails: new Set(), contactNameAcc: new Set(), leadEmails: new Set(), leadPhones: new Set(), leadNameCompany: new Set() };
+  const ex: ImportCtx["existing"] = { accountNames: new Set(), accountTax: new Set(), contactEmails: new Set(), contactNameAcc: new Set(), leadEmails: new Set(), leadPhones: new Set(), leadNameCompany: new Set(), productCodes: new Set(), productNames: new Set() };
   for (const a of accounts) { ex.accountNames.add(norm(a.name)); if (a.tax_code) ex.accountTax.add(String(a.tax_code).replace(/\s/g, "")); }
-  if (kind !== "accounts") {
+  if (kind === "products") {
+    for (const p of await fetchAll(supabase, "products", "id, name, code")) { ex.productNames.add(norm(p.name)); if (p.code) ex.productCodes.add(norm(p.code)); }
+  }
+  if (kind === "contacts" || kind === "leads") {
     for (const c of await fetchAll(supabase, "contacts", "id, first_name, last_name, account_id, emails")) {
       for (const e of (c.emails as string[]) ?? []) ex.contactEmails.add(e.toLowerCase());
       ex.contactNameAcc.add(`${norm(`${c.first_name} ${c.last_name}`)}|${c.account_id ?? ""}`);
@@ -52,6 +57,8 @@ async function buildCtx(supabase: SB, kind: ImportKind): Promise<ImportCtx> {
     people: (people.data ?? []) as { id: string; full_name: string }[],
     industries: (industries.data ?? []).map((r) => [r.id as string, r.name as string]),
     sources: (sources.data ?? []).map((r) => [r.id as string, r.name as string]),
+    categories: (categories.data ?? []).map((r) => [r.id as string, r.name as string]),
+    units: (units.data ?? []).map((r) => [r.id as string, r.name as string]),
     accounts: accounts.map((a) => ({ id: a.id as string, name: a.name as string, tax_code: (a.tax_code as string | null) ?? null })),
     existing: ex,
   };
@@ -97,5 +104,6 @@ export async function runCrmImport(_p: ActionResult<CrmImportResult> | null, fd:
   const r = data as CrmImportResult;
   revalidatePath(`/${SLUG_BY_KIND[kind]}`);
   if (r.accounts_created) revalidatePath("/tai-khoan");
-  return { ok: true, data: r, message: `Đã nhập ${r.inserted} bản ghi${r.skipped ? `, bỏ qua ${r.skipped} dòng trùng` : ""}${r.accounts_created ? `, tạo mới ${r.accounts_created} tài khoản công ty` : ""}.` };
+  if (r.lookups_created) { revalidatePath("/danh-muc"); revalidatePath("/don-vi"); }
+  return { ok: true, data: r, message: `Đã nhập ${r.inserted} bản ghi${r.skipped ? `, bỏ qua ${r.skipped} dòng trùng` : ""}${r.accounts_created ? `, tạo mới ${r.accounts_created} tài khoản công ty` : ""}${r.lookups_created ? `, tạo mới ${r.lookups_created} danh mục / đơn vị` : ""}.` };
 }

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { normPhone, parseCsvText, parseMoney, planCrmImport, splitName, type ImportCtx, type RawRow } from "@/lib/crm-import";
 
-const emptyEx = () => ({ accountNames: new Set<string>(), accountTax: new Set<string>(), contactEmails: new Set<string>(), contactNameAcc: new Set<string>(), leadEmails: new Set<string>(), leadPhones: new Set<string>(), leadNameCompany: new Set<string>() });
+const emptyEx = () => ({ accountNames: new Set<string>(), accountTax: new Set<string>(), contactEmails: new Set<string>(), contactNameAcc: new Set<string>(), leadEmails: new Set<string>(), leadPhones: new Set<string>(), leadNameCompany: new Set<string>(), productCodes: new Set<string>(), productNames: new Set<string>() });
 const ctx = (over: Partial<ImportCtx> = {}): ImportCtx => ({
-  people: [{ id: "p1", full_name: "Leader Sản xuất" }], industries: [["i1", "Du lịch"]], sources: [["s1", "Facebook"]],
+  people: [{ id: "p1", full_name: "Leader Sản xuất" }], industries: [["i1", "Du lịch"]], sources: [["s1", "Facebook"]], categories: [["c1", "Hậu kỳ"]], units: [["u1", "Video"]],
   accounts: [{ id: "a1", name: "Công ty TNHH Nông sản Xanh", tax_code: "0312345678" }], existing: emptyEx(), ...over,
 });
 const row = (n: number, cells: RawRow["cells"]): RawRow => ({ rowNo: n, cells });
@@ -108,5 +108,33 @@ describe("đọc tệp", () => {
     const ok = await parseCrmFile("contacts", "a.csv", enc("Họ và tên,Email\nNguyễn A,a@x.vn\n"));
     expect(ok?.rows[0]?.cells).toMatchObject({ full_name: "Nguyễn A", emails: "a@x.vn" });
     expect(await parseCrmFile("contacts", "b.csv", enc("foo,bar\n1,2\n"))).toBeNull();
+  });
+});
+
+describe("kế hoạch nhập sản phẩm", () => {
+  it("khớp danh mục / đơn vị theo tên, giữ tên chưa có để tạo mới, bỏ trùng tên hoặc mã, báo lỗi giá sai", () => {
+    const e = emptyEx(); e.productCodes.add("hau-ky"); e.productNames.add("quan ly kenh");
+    const plan = planCrmImport("products", [
+      row(2, { name: "Dựng hậu kỳ", code: "HK-01", category: "hau ky", unit: "VIDEO", price: "4.000.000", active: "Đang bán" }),
+      row(3, { name: "Gói quay ngoài trời", category: "Sản xuất ngoại cảnh", unit: "Ngày", price: "8000000", description: "Cả ngày" }),
+      row(4, { name: "Sản phẩm trùng mã", code: "HAU-KY" }),
+      row(5, { name: "Quản lý kênh" }),
+      row(6, { name: "Dựng hậu kỳ" }),
+      row(7, { name: "Giá hỏng", price: "abc" }),
+      row(8, { name: "Tạm ngưng", price: "1000", active: "Ngừng bán" }),
+      row(9, { code: "X" }),
+    ], ctx({ existing: e }));
+    expect(plan.map((l) => l.status)).toEqual(["new", "new", "exists", "exists", "exists", "error", "new", "error"]);
+    expect(plan[0]!.row).toMatchObject({ name: "Dựng hậu kỳ", code: "HK-01", category_id: "c1", unit_id: "u1", list_price: 4000000, is_active: true });
+    expect(plan[1]!.row).toMatchObject({ category_name: "Sản xuất ngoại cảnh", unit_name: "Ngày", list_price: 8000000, description: "Cả ngày" });
+    expect(plan[1]!.row).not.toHaveProperty("category_id");
+    expect(plan[2]!.warnings.join()).toContain("Chưa có giá");
+    expect(plan[6]!.row).toMatchObject({ is_active: false });
+  });
+  it("nhận tiêu đề cột tiếng Việt của sản phẩm", async () => {
+    const { parseCrmFile } = await import("@/lib/crm-import");
+    const enc = (s: string) => new TextEncoder().encode(s).buffer as ArrayBuffer;
+    const p = await parseCrmFile("products", "sp.csv", enc("Dịch vụ;Mã;ĐVT;Đơn giá\nDựng video;DV1;Video;4000000\n"));
+    expect(p?.rows[0]?.cells).toMatchObject({ name: "Dựng video", code: "DV1", unit: "Video", price: "4000000" });
   });
 });

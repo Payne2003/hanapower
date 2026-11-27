@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download, FileText } from "lucide-react";
 import { requireContext, can } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { oppInfo } from "@/lib/crm-data";
@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, NoAccess } from "@/components/data-table";
 import { RpcButton } from "@/components/rpc-button";
 import { RpcForm } from "@/components/rpc-form";
+import { Disclosure } from "@/components/disclosure";
 
 export const metadata: Metadata = { title: "Hợp đồng" };
 
@@ -46,7 +47,8 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-5">
       <Link href="/hop-dong" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden />Hợp đồng</Link>
-      <PageHeader title={`Hợp đồng ${c.code}`} eyebrow={info ? <span><Link className="text-primary hover:underline" href={`/co-hoi/${info.id}`}>{info.name}</Link> · {info.account_name}</span> : undefined} />
+      <PageHeader title={`Hợp đồng ${c.code}`} actions={<><a href={`/hop-dong/${id}/pdf`} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium hover:bg-muted"><FileText className="size-4" aria-hidden />Xem PDF</a><a href={`/hop-dong/${id}/pdf?tai=1`} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover"><Download className="size-4" aria-hidden />Tải PDF</a></>} eyebrow={info ? <span><Link className="text-primary hover:underline" href={`/co-hoi/${info.id}`}>{info.name}</Link> · {info.account_name}</span> : undefined} />
+      <p className="-mt-2 text-xs text-muted-foreground">PDF dùng điều khoản mẫu thông dụng cho dịch vụ sản xuất nội dung; điều khoản riêng ghi ở phần Ghi chú của hợp đồng. Nên nhờ pháp chế / luật sư rà soát mẫu trước khi dùng để ký.</p>
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Trạng thái" value={badge(CONTRACT_STATUS, st)} tone="sky" />
         <StatCard label="Giá trị hiện tại" value={money(c.current_value as number)} tone="green" hint={`Ban đầu ${money(c.initial_value as number)}`} />
@@ -86,6 +88,19 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
             cols={[{ label: "Mã", cell: (r) => String(r.code) }, { label: "Trạng thái", cell: (r) => badge(ORDER_STATUS, r.status) }, { label: "Giá trị", cell: (r) => money(r.total as number), className: "text-right" }]} />
         </CardContent>
       </Card>
+      {canWrite && !["cancelled", "terminated"].includes(st) ? (
+        <Disclosure summary="Sửa ngày hiệu lực, điều khoản bổ sung, thông tin chữ ký">
+          <RpcForm rpc="update_contract" fixed={{ p_id: id }} submitLabel="Lưu hợp đồng" revalidate={[`/hop-dong/${id}`, "/hop-dong"]} columns={2}
+            fields={[
+              { name: "p_effective", label: "Ngày hiệu lực", type: "date", defaultValue: (c.effective_date as string) ?? "", hint: st === "draft" || st === "pending" ? undefined : "Đã hiệu lực — không sửa được" },
+              { name: "p_expiry", label: "Ngày hết hạn", type: "date", defaultValue: (c.expiry_date as string) ?? "" },
+              { name: "p_customer_signed_by", label: "Người đại diện khách ký", defaultValue: (c.customer_signed_by as string) ?? "" },
+              { name: "p_customer_signed_date", label: "Ngày khách ký", type: "date", defaultValue: (c.customer_signed_date as string) ?? "" },
+              { name: "p_company_signed_date", label: "Ngày công ty ký", type: "date", defaultValue: (c.company_signed_date as string) ?? "" },
+              { name: "p_note", label: "Điều khoản bổ sung (in thành “Điều khoản bổ sung” trong PDF)", type: "textarea", defaultValue: (c.note as string) ?? "" },
+            ]} />
+        </Disclosure>
+      ) : null}
       <Card>
         <CardHeader><CardTitle>Chữ ký & ghi chú</CardTitle></CardHeader>
         <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
