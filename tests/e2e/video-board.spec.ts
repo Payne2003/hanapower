@@ -29,7 +29,27 @@ const count = async (p: Page, key: string) => Number((await p.getByTestId(`qv-co
 
 test.describe.configure({ mode: "serial" });
 
+// Bộ kiểm thử này đổi D0012 và thêm video mới; trả lại nguyên trạng để các bộ kiểm thử sau (cùng CSDL) không bị ảnh hưởng.
+let d0012Backup: { row: Record<string, unknown>; items: { kind: string; status: string }[] } | null = null;
+test.afterAll(async () => {
+  await sql(`delete from videos where code in ('D0028', 'D0020', 'D0030')`);
+  if (!d0012Backup) return;
+  await sql(
+    `update videos v set stage = r.stage, handover_status = r.handover_status, handover_submitted_at = r.handover_submitted_at, handover_confirmed_at = r.handover_confirmed_at,
+       editor_note = r.editor_note, supplement_count = r.supplement_count, edit_progress = r.edit_progress, draft_url = r.draft_url, approved_by = r.approved_by, approved_at = r.approved_at,
+       published_url = r.published_url, published_at = r.published_at, content_owner_id = r.content_owner_id, editor_id = r.editor_id, resource_url = r.resource_url,
+       due_date = r.due_date, hold_reason = r.hold_reason, stage_before_hold = r.stage_before_hold
+     from jsonb_populate_record(null::videos, $1::jsonb) r where v.code = 'D0012'`,
+    [JSON.stringify(d0012Backup.row)],
+  );
+  for (const it of d0012Backup.items) await sql(`update video_items set status = $1::item_status where kind = $2 and video_id = (select id from videos where code = 'D0012')`, [it.status, it.kind]);
+});
+
 test("dựng dữ liệu kiểm thử: D0012 (4/4, chờ Editor), D0028 (chưa Editor, 0/4), D0020 (đã nhận đủ, tạm dừng), D0030 (sẵn sàng bàn giao)", async () => {
+  d0012Backup = {
+    row: (await sql<Record<string, unknown>>(`select to_jsonb(v) as j from videos v where code = 'D0012'`))[0]?.j as Record<string, unknown>,
+    items: await sql<{ kind: string; status: string }>(`select kind::text, status::text from video_items where video_id = (select id from videos where code = 'D0012')`),
+  };
   await sql(`update videos set stage = 'handover', handover_status = 'pending', handover_submitted_at = now() - interval '1 day', handover_confirmed_at = null, editor_note = null,
     edit_progress = 0, draft_url = null, approved_by = null, approved_at = null, published_url = null, published_at = null, content_owner_id = $1, editor_id = $2,
     resource_url = 'https://drive.example.com/d0012', due_date = null where code = 'D0012'`, [HIEU, DUY]);
