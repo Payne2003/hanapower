@@ -31,7 +31,9 @@ test("luồng Phòng ban → Thành viên → Hồ sơ → quay về phòng; th�
   await expect(a.getByTestId("department-members").locator("tr[data-member]").filter({ hasText: "Hiếu" }).getByTestId("member-positions")).toContainText("Trưởng nhóm");
   // Tổng quan: số thành viên không đếm trùng
   await a.getByTestId("dtab-tong-quan").click();
-  const memberRows = await a.getByTestId("dtab-thanh-vien").click().then(() => a.getByTestId("department-members").locator("tr[data-member]").count());
+  await a.getByTestId("dtab-thanh-vien").click();
+  await expect(a.getByTestId("department-members").locator("tr[data-member]").first()).toBeVisible(); // chờ bảng hiển thị rồi mới đếm
+  const memberRows = await a.getByTestId("department-members").locator("tr[data-member]").count();
   await a.getByTestId("dtab-tong-quan").click();
   await expect(a.getByTestId("dept-overview")).toContainText(`Thành viên (mỗi người một lần)${memberRows}`);
   // Mở hồ sơ từ danh sách thành viên → đúng người, có đường quay về phòng

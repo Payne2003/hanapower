@@ -59,6 +59,8 @@ declare
   v_sal numeric; v_ins numeric; d date; v_att text;
   adv uuid;
 begin
+  perform set_config('app.price_apply', 'on', true); -- cho phép nạp / gỡ dòng giá của bảng giá demo có chế độ phê duyệt
+
   select coalesce(timezone, 'Asia/Ho_Chi_Minh') into v_tz from public.organizations where id = v_org;
   if not found then raise exception 'Không tìm thấy doanh nghiệp %', v_org; end if;
   v_today := (now() at time zone v_tz)::date;
@@ -586,6 +588,36 @@ begin
     (pg_temp.did(44, 1), v_org, usr[1], 'project', 'Rủi ro cao', 'view=risk&sort=end'),
     (pg_temp.did(44, 2), v_org, usr[1], 'project', 'Đến hạn thu 7 ngày', 'view=pay7'),
     (pg_temp.did(44, 3), v_org, usr[10], 'finance', 'Thiếu chứng từ', 'tab=chung-tu&voucher=missing') on conflict do nothing;
+
+  -- ---------------- Sản phẩm & Bảng giá: bảng mặc định, tệp, đề nghị đổi giá ở đủ trạng thái -----------------
+  for i in 1..6 loop
+    update public.products set default_price_book_id = pg_temp.did(7, 1) where id = pg_temp.did(8, i) and default_price_book_id is null;
+  end loop;
+  update public.price_books set requires_approval = true where id = pg_temp.did(7, 2);
+  insert into public.product_files (id, org_id, product_id, kind, name, mime, size_bytes, uploaded_by) values
+    (pg_temp.did(51, 1), v_org, pg_temp.did(8, 1), 'image', 'anh-san-pham.png', 'image/png', 68, usr[1]),
+    (pg_temp.did(51, 2), v_org, pg_temp.did(8, 1), 'document', 'tai-lieu-ban-hang.txt', 'text/plain', 58, usr[1]) on conflict (id) do nothing;
+  insert into public.product_file_blobs (file_id, content) values
+    (pg_temp.did(51, 1), decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64')),
+    (pg_temp.did(51, 2), convert_to('Tài liệu bán hàng demo — không phải tài liệu thật.', 'UTF8')) on conflict do nothing;
+  update public.products set image_file_id = pg_temp.did(51, 1) where id = pg_temp.did(8, 1) and image_file_id is null;
+  for k in 1..6 loop
+    insert into public.price_change_requests (id, org_id, code, price_book_id, reason, effective_date, status, requested_by, submitted_at, decided_by, decided_at, decision_note, applied_at, base_version)
+    values (pg_temp.did(52, k), v_org, 'DNG-DEMO-' || k, pg_temp.did(7, 2), (array['Điều chỉnh giá theo chi phí sản xuất', 'Khuyến mãi đối tác quý mới', 'Thêm dịch vụ mới vào bảng', 'Tăng giá quản lý kênh', 'Giảm giá gói dựng hậu kỳ', 'Đề nghị nhầm bảng'])[k],
+      v_today + (array[10, 20, 5, 15, -3, 7])[k], (array['draft', 'pending', 'changes_requested', 'approved', 'approved', 'cancelled'])[k], usr[2],
+      case when k >= 2 then now() - k * interval '1 day' end, case when k in (3, 4, 5) then usr[1] end, case when k in (3, 4, 5) then now() - interval '1 day' end,
+      case k when 3 then 'Chia nhỏ theo gói rồi gửi lại' when 4 then 'Đồng ý' when 5 then 'Đồng ý, áp dụng ngay' end, case when k = 5 then now() - interval '2 days' end, 1)
+    on conflict (id) do nothing;
+    insert into public.price_change_lines (id, org_id, request_id, product_id, is_new, old_unit_price, old_fee_percent, old_tax_percent, new_unit_price, new_fee_percent, new_tax_percent)
+    select pg_temp.did(53, k * 10 + gs.jj), v_org, pg_temp.did(52, k), pg_temp.did(8, gs.jj + k % 3), false, round(prod_price[gs.jj + k % 3] * 0.9, -3), 0, 8, round(prod_price[gs.jj + k % 3] * (0.95 + gs.jj * 0.05), -3), 0, 8
+    from generate_series(1, 2) as gs(jj) on conflict (id) do nothing;
+    insert into public.price_change_events (org_id, request_id, actor_id, action, note, created_at)
+    select v_org, pg_temp.did(52, k), usr[2], 'created', null, now() - (k + 2) * interval '1 day' where not exists (select 1 from public.price_change_events where request_id = pg_temp.did(52, k));
+  end loop;
+  insert into public.price_change_events (org_id, request_id, actor_id, action, note) select v_org, pg_temp.did(52, gs.kk), usr[2], 'submitted', null from generate_series(2, 5) as gs(kk)
+    where not exists (select 1 from public.price_change_events where request_id = pg_temp.did(52, gs.kk) and action = 'submitted');
+  insert into public.price_change_events (org_id, request_id, actor_id, action, note) select v_org, pg_temp.did(52, gs.kk), usr[1], (array['changes_requested', 'approved', 'approved'])[gs.kk - 2], 'Ý kiến demo' from generate_series(3, 5) as gs(kk)
+    where not exists (select 1 from public.price_change_events where request_id = pg_temp.did(52, gs.kk) and action in ('approved', 'changes_requested'));
 
   -- ---------------- Thông báo, nhật ký -----------------
   if not exists (select 1 from public.audit_logs where action = 'demo.seed' and org_id = v_org) then

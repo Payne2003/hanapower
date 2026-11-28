@@ -17,6 +17,8 @@ import { RpcButton } from "@/components/rpc-button";
 import { RpcForm } from "@/components/rpc-form";
 import { NotesPanel } from "@/components/notes-panel";
 
+import { PriceDiffPanel } from "@/components/pricing/price-diff";
+
 export const metadata: Metadata = { title: "Cơ hội" };
 
 export default async function OpportunityPage({ params }: { params: Promise<{ id: string }> }) {
@@ -80,6 +82,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
               { label: "Thành tiền", cell: (r) => <strong>{money(r.total as number)}</strong>, className: "text-right" },
               ...(canWrite && !closed ? [{ label: "", cell: (r: Row) => <DeleteLineButton table="opportunity_products" id={String(r.id)} path={`/co-hoi/${id}`} /> }] : []),
             ]} />
+          {!closed ? <PriceDiffPanel kind="opportunity" id={id} canWrite={canWrite} revalidate={revalidate} /> : null}
           {canWrite && !closed ? <OpportunityLineForm opportunityId={id} products={(prods.data ?? []).map((p) => [p.id as string, p.name as string])} /> : null}
         </CardContent>
       </Card>

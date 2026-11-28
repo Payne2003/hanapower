@@ -15,6 +15,8 @@ import { DataTable, NoAccess } from "@/components/data-table";
 import { RpcButton } from "@/components/rpc-button";
 import { RpcForm } from "@/components/rpc-form";
 
+import { PriceDiffPanel } from "@/components/pricing/price-diff";
+
 export const metadata: Metadata = { title: "Báo giá" };
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -55,6 +57,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         <StatCard label="Tổng cộng" value={money(q.total as number)} tone="green" hint={q.expiry_date ? `Hết hạn ${formatDate(q.expiry_date as string)}` : undefined} />
       </section>
       {canWrite && actions[st]?.length ? <Card><CardHeader><CardTitle>Bước tiếp theo</CardTitle></CardHeader><CardContent className="flex flex-wrap gap-2">{actions[st]}</CardContent></Card> : null}
+      {st === "draft" ? <PriceDiffPanel kind="quote" id={id} canWrite={canWrite} revalidate={rev} /> : null}
       {st === "accepted" && canWrite && !hasContract ? (
         <Card>
           <CardHeader><CardTitle>Lập hợp đồng</CardTitle></CardHeader>

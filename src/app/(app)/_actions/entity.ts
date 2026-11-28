@@ -68,6 +68,7 @@ export async function addOpportunityLine(_p: ActionResult | null, fd: FormData):
   const opp = String(fd.get("opportunity_id") ?? "");
   const productId = String(fd.get("product_id") ?? "") || null;
   const supabase = await createSupabaseServerClient();
+  await supabase.rpc("apply_due_price_changes"); // đề nghị giá đã tới ngày hiệu lực được áp dụng trước khi tra giá
   let description = String(fd.get("description") ?? "").trim();
   let unit = String(fd.get("unit") ?? "").trim() || null;
   let unitPrice = fd.get("unit_price") === "" ? null : num(fd.get("unit_price"), 0);
