@@ -2,11 +2,17 @@
 do $rm$
 declare v_org uuid := current_setting('demo.org')::uuid;
 begin
+  perform set_config('app.price_apply', 'on', true);
   delete from public.audit_logs where (action = 'demo.seed' and details->>'note' like 'Dữ liệu demo%') or details->>'demo' = 'true';
   delete from public.crm_notes where id::text like 'dede%';
   delete from public.payroll_periods where id::text like 'dede%';          -- kéo theo dòng lương, khoản lương
   delete from public.project_bonuses where id::text like 'dede%';
   delete from public.freelance_assignments where id::text like 'dede%';
+  delete from public.finance_files where id::text like 'dede%';              -- kéo theo nội dung tệp
+  delete from public.finance_periods where org_id = v_org and note like 'Dữ liệu demo%';
+  delete from public.finance_reminders where kind = 'demo' and ref_id::text like 'dede%';
+  delete from public.saved_views where id::text like 'dede%';
+  delete from public.price_change_requests where id::text like 'dede%';      -- kéo theo dòng đề nghị và lịch sử xử lý
   delete from public.expenses where id::text like 'dede%';
   delete from public.advances where id::text like 'dede%';
   delete from public.incomes where id::text like 'dede%';

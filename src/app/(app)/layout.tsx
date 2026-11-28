@@ -37,8 +37,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/bao-cao-ban-hang", label: "Báo cáo bán hàng", icon: "chart" },
       ] });
       groups.push({ label: "Sản phẩm", items: [
-        { href: "/san-pham", label: "Sản phẩm / dịch vụ", icon: "product" }, { href: "/danh-muc", label: "Danh mục", icon: "category" },
-        { href: "/don-vi", label: "Đơn vị tính", icon: "unit" }, { href: "/bang-gia", label: "Bảng giá", icon: "pricebook" },
+        { href: "/san-pham", label: "Sản phẩm / dịch vụ", icon: "product" }, ...(can(ctx, "crm.manage") ? [{ href: "/san-pham/dieu-hanh", label: "Điều hành giá", icon: "chart" as const }] : []), { href: "/danh-muc", label: "Danh mục", icon: "category" },
+        { href: "/don-vi", label: "Đơn vị tính", icon: "unit" }, { href: "/bang-gia", label: "Bảng giá", icon: "pricebook" }, { href: "/bang-gia/de-nghi", label: "Đề nghị đổi giá", icon: "pricebook" },
         { href: "/nguon-lead", label: "Nguồn lead", icon: "source" }, { href: "/nganh-nghe", label: "Ngành nghề", icon: "industry" },
       ] });
     }
