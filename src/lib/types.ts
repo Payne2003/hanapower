@@ -27,6 +27,7 @@ export type Person = {
   job_title: string | null;
   department_id: string | null;
   is_active: boolean;
+  avatar_updated_at?: string | null;
   roles: AppRole[];
 };
 
@@ -61,6 +62,7 @@ export type Video = {
   published_url: string | null;
   published_at: string | null;
   hold_reason: string | null;
+  stage_before_hold?: VideoStage | null;
   project_id?: string | null;
   created_at: string;
   updated_at: string;
