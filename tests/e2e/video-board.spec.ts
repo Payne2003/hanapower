@@ -145,10 +145,11 @@ test("tìm theo mã, chuyển tháng, bộ lọc người cho biết Content hay
   await expect(l.getByTestId("video-row")).toHaveCount(1);
   await l.getByTestId("video-search").fill("");
   await expect(l).not.toHaveURL(/q=D0028/);
-  // chuyển tháng: tháng trước không có video; tháng sau quay lại
+  // chuyển tháng: sang tháng trước thì không còn D0012 (ngày báo cáo ở tháng này); tháng sau quay lại
   await l.getByTestId("month-prev").click();
   await expect(l).toHaveURL(/thang=\d{4}-\d{2}/);
-  await expect(l.getByText("Không có video nào")).toBeVisible();
+  await expect(rowOf(l, "D0012")).toHaveCount(0);
+  await expect(l.getByTestId("video-count")).toContainText("tháng");
   await l.getByTestId("month-next").click();
   await expect(rowOf(l, "D0012")).toBeVisible();
 });
