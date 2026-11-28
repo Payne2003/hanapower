@@ -196,6 +196,24 @@ describe("Chuẩn bị Content và bàn giao", () => {
   });
 });
 
+describe("Xác nhận bàn giao lặp (bấm đúp)", () => {
+  it("Editor xác nhận 'đã nhận đủ' hai lần chỉ ghi một sự kiện, kể cả khi video đã sang bước sau hoặc tạm dừng", async () => {
+    await scenario(async (q, as) => {
+      await as(U.hieu);
+      await q("select update_content($1, $2, $3, $4, $5, 'https://drive.google.com/drive/folders/abc', 'ok')", [V(1), ...allDone]);
+      await q("select submit_handover($1)", [V(1)]);
+      await as(U.duy); // D0001 mẫu đã có Editor là Duy
+      await q("select confirm_handover($1, 'received')", [V(1)]);
+      await q("select confirm_handover($1, 'received')", [V(1)]); // lần hai: im lặng
+      expect(await video(q, V(1))).toMatchObject({ stage: "editing", handover_status: "received" });
+      expect((await q("select count(*)::int as n from video_events where video_id = $1 and event_type = 'handover_received'", [V(1)]))[0]?.n).toBe(1);
+      // người không phải Editor vẫn bị từ chối
+      await as(U.hoa);
+      await expectError(q("select confirm_handover($1, 'received')", [V(1)]), "Chỉ Editor tiếp nhận");
+    });
+  });
+});
+
 describe("Dựng, duyệt và đăng", () => {
   it("Editor nộp duyệt cần link bản dựng; Leader yêu cầu sửa rồi duyệt; đăng cần link", async () => {
     await scenario(async (q, as) => {

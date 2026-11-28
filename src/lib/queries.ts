@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AppRole, Channel, ItemKind, ItemStatus, Notification, Person, Video, VideoComment, VideoEvent } from "@/lib/types";
 
 const VIDEO_COLS =
-  "id, code, title, brief, channel_id, priority, stage, report_date, due_date, content_owner_id, resource_url, content_note, editor_id, handover_status, handover_submitted_at, handover_confirmed_at, editor_note, supplement_count, edit_progress, draft_url, review_note, revision_count, approved_at, published_url, published_at, hold_reason, project_id, created_at, updated_at, video_items(kind, status)";
+  "id, code, title, brief, channel_id, priority, stage, report_date, due_date, content_owner_id, resource_url, content_note, editor_id, handover_status, handover_submitted_at, handover_confirmed_at, editor_note, supplement_count, edit_progress, draft_url, review_note, revision_count, approved_at, published_url, published_at, hold_reason, stage_before_hold, project_id, created_at, updated_at, video_items(kind, status)";
 
 type Raw = Omit<Video, "items"> & { video_items: { kind: ItemKind; status: ItemStatus }[] };
 
@@ -22,7 +22,7 @@ function fail(what: string, error: { message: string }): never {
 export async function getPeople(): Promise<Person[]> {
   const supabase = await createSupabaseServerClient();
   const [p, r] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, email, job_title, department_id, is_active").order("full_name"),
+    supabase.from("profiles").select("id, full_name, email, job_title, department_id, is_active, avatar_updated_at").order("full_name"),
     supabase.from("user_roles").select("user_id, role"),
   ]);
   if (p.error) fail("nhân sự", p.error);
@@ -39,7 +39,8 @@ export async function getChannels(): Promise<Channel[]> {
   return (data ?? []) as Channel[];
 }
 
-export type VideoFilter = { from?: string; to?: string; stage?: string; person?: string };
+/** person: mã người (Content hoặc Editor); personRole: chỉ tính Content ('content') hoặc Editor ('editor'); q: tìm theo tiêu đề / mã video. */
+export type VideoFilter = { from?: string; to?: string; stage?: string; person?: string; personRole?: "content" | "editor"; q?: string };
 
 export async function getVideos(f: VideoFilter = {}): Promise<Video[]> {
   const supabase = await createSupabaseServerClient();
@@ -47,7 +48,11 @@ export async function getVideos(f: VideoFilter = {}): Promise<Video[]> {
   if (f.from) q = q.gte("report_date", f.from);
   if (f.to) q = q.lte("report_date", f.to);
   if (f.stage) q = q.eq("stage", f.stage);
-  if (f.person && /^[0-9a-f-]{36}$/i.test(f.person)) q = q.or(`content_owner_id.eq.${f.person},editor_id.eq.${f.person}`);
+  if (f.person && /^[0-9a-f-]{36}$/i.test(f.person)) {
+    q = f.personRole === "content" ? q.eq("content_owner_id", f.person) : f.personRole === "editor" ? q.eq("editor_id", f.person) : q.or(`content_owner_id.eq.${f.person},editor_id.eq.${f.person}`);
+  }
+  const term = (f.q ?? "").replace(/[%*,()\\]/g, " ").trim().slice(0, 80);
+  if (term) q = q.or(`title.ilike.%${term}%,code.ilike.%${term}%`);
   const { data, error } = await q;
   if (error) fail("danh sách video", error);
   return ((data ?? []) as unknown as Raw[]).map(toVideo);

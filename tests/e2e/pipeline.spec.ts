@@ -52,7 +52,7 @@ test("quy trình đầy đủ từ ý tưởng đến đăng kênh", async ({ br
   // 1) Content (Hiếu) tạo video, chọn Editor Duy
   const hieu = await login(browser, "hieu@hanamedia.local");
   await hieu.getByRole("link", { name: "Video", exact: true }).click();
-  await hieu.getByText("Tạo video mới").click();
+  await hieu.getByTestId("create-video").click();
   await hieu.getByLabel("Tên video / chủ đề").fill(title);
   await hieu.getByLabel("Ý tưởng / yêu cầu").fill("Góc kể: linh cẩu phản công, tham khảo video đối thủ.");
   await hieu.getByLabel("Editor tiếp nhận").selectOption({ label: "Duy" });

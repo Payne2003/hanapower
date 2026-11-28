@@ -49,6 +49,12 @@ export async function videoAction(_prev: ActionResult | null, fd: FormData): Pro
       } else message = "Đã lưu phần Content.";
       break;
     }
+    case "send_handover": {
+      // Chỉ gửi bàn giao (không sửa Content): dùng ở khung chi tiết bên phải; gửi lặp không đổi gì.
+      err = await rpc("submit_handover", { p_video_id, p_note: null });
+      message = "Đã gửi bàn giao — chờ Editor xác nhận.";
+      break;
+    }
     case "received":
     case "needs_more": {
       err = await rpc("confirm_handover", { p_video_id, p_decision: raw.op, p_note: raw.note ?? "" });

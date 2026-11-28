@@ -55,7 +55,7 @@ test("khởi tạo lần đầu, tạo tài khoản nhân viên, đặt lại m�
   await other.getByRole("button", { name: "Đăng nhập" }).click();
   await expect(other.getByRole("heading", { name: "Xin chào, Nhân Viên Mới" })).toBeVisible();
   await other.getByRole("link", { name: "Video", exact: true }).click();
-  await expect(other.getByText("Tạo video mới")).toBeVisible();
+  await expect(other.getByTestId("create-video")).toBeVisible();
   // Danh bạ nhân viên mở cho mọi nhân viên, nhưng tạo tài khoản chỉ dành cho quản trị
   await other.getByRole("link", { name: "Nhân viên", exact: true }).click();
   await expect(other.getByRole("heading", { name: "Nhân viên", exact: true })).toBeVisible();
